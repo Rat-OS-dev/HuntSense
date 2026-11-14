@@ -8,14 +8,158 @@
 </head>
 <body class="home-page">
   <header class="topbar"><a class="account-link" href="account.html">Account</a></header>
-  <main aria-label="HuntSense home"></main>
+  <main class="home-content" aria-label="HuntSense home">
+    <section class="videos-section" aria-labelledby="videos-heading">
+      <div class="section-heading">
+        <div>
+          <h1 id="videos-heading">My videos</h1>
+          <p class="muted">Your uploaded gameplay clips, saved privately to your account.</p>
+        </div>
+        <button class="add-video-button" id="choose-video" type="button" aria-label="Add a video" title="Add a video">+</button>
+        <input id="video-file" type="file" accept="video/mp4,video/webm,video/quicktime,.mp4,.webm,.mov" hidden>
+      </div>
+      <p class="upload-note">MP4, WebM, or MOV · Up to 50 MB per video</p>
+      <p class="message" id="video-message" role="status" aria-live="polite"></p>
+      <div class="video-list" id="video-list">
+        <p class="empty-videos">Loading your videos…</p>
+      </div>
+    </section>
+  </main>
   <script type="module">
     import { supabase } from "./supabase.js";
-    const { data: { session }, error } = await supabase.auth.getSession();
-    if (error || !session) window.location.replace("login.html");
-    supabase.auth.onAuthStateChange((_event, nextSession) => {
-      if (!nextSession) window.location.replace("login.html");
+
+    const BUCKET = "huntsense-videos";
+    const MAX_FILE_SIZE = 50 * 1024 * 1024;
+    const chooseButton = document.querySelector("#choose-video");
+    const fileInput = document.querySelector("#video-file");
+    const videoList = document.querySelector("#video-list");
+    const message = document.querySelector("#video-message");
+
+    const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+    if (sessionError || !session) {
+      window.location.replace("login.html");
+    } else {
+      supabase.auth.onAuthStateChange((_event, nextSession) => {
+        if (!nextSession) window.location.replace("login.html");
+      });
+      await loadVideos(session.user.id);
+    }
+
+    chooseButton.addEventListener("click", () => fileInput.click());
+
+    fileInput.addEventListener("change", async () => {
+      const file = fileInput.files?.[0];
+      if (!file) return;
+      message.textContent = "";
+
+      const allowedTypes = ["video/mp4", "video/webm", "video/quicktime"];
+      if (!allowedTypes.includes(file.type)) {
+        message.textContent = "Please choose an MP4, WebM, or MOV video.";
+        fileInput.value = "";
+        return;
+      }
+      if (file.size > MAX_FILE_SIZE) {
+        message.textContent = "That video is over the 50 MB upload limit.";
+        fileInput.value = "";
+        return;
+      }
+
+      chooseButton.disabled = true;
+      chooseButton.textContent = "…";
+      message.textContent = "Uploading your video…";
+
+      try {
+        const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
+        const objectPath = `${session.user.id}/${crypto.randomUUID()}-${safeName}`;
+        const { error: uploadError } = await supabase.storage
+          .from(BUCKET)
+          .upload(objectPath, file, {
+            cacheControl: "3600",
+            contentType: file.type,
+            upsert: false
+          });
+
+        if (uploadError) throw uploadError;
+        message.textContent = "Video uploaded successfully.";
+        await loadVideos(session.user.id);
+      } catch (error) {
+        message.textContent = error.message || "The video could not be uploaded. Please try again.";
+      } finally {
+        chooseButton.disabled = false;
+        chooseButton.textContent = "+";
+        fileInput.value = "";
+      }
     });
+
+    async function loadVideos(userId) {
+      videoList.replaceChildren();
+      const { data: files, error } = await supabase.storage
+        .from(BUCKET)
+        .list(userId, {
+          limit: 100,
+          sortBy: { column: "created_at", order: "desc" }
+        });
+
+      if (error) {
+        videoList.textContent = "Could not load your videos: " + error.message;
+        return;
+      }
+
+      const videos = (files || []).filter(file => file.name && file.name !== ".emptyFolderPlaceholder");
+      if (!videos.length) {
+        const empty = document.createElement("p");
+        empty.className = "empty-videos";
+        empty.textContent = "No videos yet. Click the + button to upload your first clip.";
+        videoList.append(empty);
+        return;
+      }
+
+      for (const file of videos) {
+        const path = `${userId}/${file.name}`;
+        const { data: signed, error: urlError } = await supabase.storage
+          .from(BUCKET)
+          .createSignedUrl(path, 60 * 60);
+
+        const row = document.createElement("article");
+        row.className = "video-row";
+
+        const details = document.createElement("div");
+        details.className = "video-details";
+        const name = document.createElement("h2");
+        name.className = "video-name";
+        name.textContent = file.name.replace(/^[0-9a-f-]+-/i, "");
+        const date = document.createElement("p");
+        date.className = "muted video-date";
+        date.textContent = file.created_at ? new Date(file.created_at).toLocaleString() : "Uploaded video";
+        details.append(name, date);
+        row.append(details);
+
+        if (!urlError && signed?.signedUrl) {
+          const preview = document.createElement("video");
+          preview.className = "video-preview";
+          preview.controls = true;
+          preview.preload = "metadata";
+          preview.src = signed.signedUrl;
+          preview.setAttribute("aria-label", "Preview " + name.textContent);
+          row.append(preview);
+
+          const openLink = document.createElement("a");
+          openLink.className = "video-open-link";
+          openLink.href = signed.signedUrl;
+          openLink.target = "_blank";
+          openLink.rel = "noopener";
+          openLink.textContent = "Open video";
+          row.append(openLink);
+        } else {
+          const unavailable = document.createElement("p");
+          unavailable.className = "muted";
+          unavailable.textContent = "Preview unavailable";
+          row.append(unavailable);
+        }
+
+        videoList.append(row);
+      }
+    }
   </script>
 </body>
 </html>
