@@ -40,7 +40,7 @@
 <body>
   <header class="topbar"><a class="account-link" href="index.html">Back to HuntSense</a></header>
   <main class="admin-wrap">
-    <section id="admin-login" class="admin-login" hidden>
+    <section id="admin-login" class="admin-login">
       <h1>HuntSense Admin</h1><p>Sign in with your existing HuntSense account to continue.</p>
       <form id="admin-login-form">
         <label for="admin-email">Email</label><input id="admin-email" type="email" autocomplete="username" required>
@@ -138,7 +138,7 @@
         status.textContent = accounts.length + " account(s) loaded.";
         return true;
       } catch (error) {
-        status.textContent = error.message + " Admin access must be configured on the secure server.";
+        status.textContent = error.message;
         rows.innerHTML = '<tr><td colspan="3">Access blocked. No account data was returned.</td></tr>';
         return false;
       }
