@@ -168,8 +168,7 @@ def process_job(job):
     original=work/"source"
     try:
         supabase.table("video_processing_jobs").update({"status":"processing","error_message":None}).eq("id",jid).execute()
-        data=supabase.storage.from_(BUCKET).download(src)
-        original.write_bytes(data)
+        download_source(src,str(original))
         duration=probe(str(original))
         if duration>MAX_SECONDS+3:
             raise ValueError("Recording exceeds the 10-hour maximum.")
@@ -188,11 +187,22 @@ def process_job(job):
                 "video_title":f'{Path(job["source_title"]).stem} - Match {idx}',
                 "status":"pending","timestamps":[]
             }).execute().data[0]
-            created.append(row["id"])\n            model_path=os.getenv("YOLO_MODEL_PATH")\n            if model_path and Path(model_path).exists():\n                count=save_fight_clips(row["id"],uid,storage,str(out),model_path)\n                log.info("Saved %s fight clips for match %s",count,row["id"])
+            created.append(row["id"])
+            model_path=os.getenv("YOLO_MODEL_PATH")
+            if model_path and Path(model_path).exists():
+                count=save_fight_clips(row["id"],uid,storage,str(out),model_path)
+                log.info("Saved %s fight clips for match %s",count,row["id"])
         # Never remove the source until every match has encoded, uploaded, and a DB row exists.
-        supabase.storage.from_(BUCKET).remove([src])
+        model_path=os.getenv("YOLO_MODEL_PATH")
+        if model_path and Path(model_path).exists():
+            supabase.storage.from_(BUCKET).remove([src])
+            job_status="completed"
+            message=None
+        else:
+            job_status="matches_split_model_needed"
+            message="Match videos were split and saved. Configure a trained YOLO_MODEL_PATH to generate fight clips and finish automatic fight analysis. The original recording was retained."
         supabase.table("video_processing_jobs").update({
-            "status":"completed","error_message":None
+            "status":job_status,"error_message":message
         }).eq("id",jid).execute()
         log.info("Job %s produced %s match videos",jid,len(created))
     except Exception as exc:
