@@ -83,7 +83,7 @@
         return;
       }
       currentUser = user;
-      if (user.email?.toLowerCase() === "ryan@ratys.com") {
+      if (user.email?.trim().toLowerCase() === "ryan@ratys.com" && user.email_confirmed_at) {
         document.getElementById("admin-nav-link").hidden = false;
       }
       loadMatches();
