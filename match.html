@@ -11,8 +11,28 @@
     .status-pill{padding:6px 12px;border-radius:999px;font-size:.75rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;border:1px solid var(--line)}
     .status-pending{background:rgba(213,173,112,.12);color:#f0c987}
     .status-ready{background:rgba(131,167,123,.14);color:#a7d39c;border-color:rgba(131,167,123,.35)}
-    .video-box{border:1px solid rgba(213,173,112,.25);border-radius:18px;overflow:hidden;background:#070807}
+    .video-box{position:relative;border:1px solid rgba(213,173,112,.25);border-radius:18px;overflow:visible;background:#070807}
+    .video-stage{position:relative;overflow:hidden;border-radius:17px;background:#050605}
     .video-box video{display:block;width:100%;max-height:66vh;background:#050605}
+    .video-controls{display:flex;align-items:center;gap:12px;padding:10px 13px;background:#111411;color:#f3f3f3;font:13px/1.2 Arial,sans-serif}
+    .video-controls button,.video-menu button{border:0;background:transparent;color:inherit;font:inherit;cursor:pointer}
+    .video-control-btn{width:30px;height:30px;display:grid;place-items:center;border-radius:6px;font-size:17px!important}
+    .video-control-btn:hover,.video-menu button:hover{background:rgba(255,255,255,.12)}
+    .video-time{font-variant-numeric:tabular-nums;white-space:nowrap;color:#ddd;font-size:12px}
+    .video-range{accent-color:#e3e3e3;min-width:0;cursor:pointer}
+    #video-seek{flex:1}
+    #video-volume{width:72px}
+    .video-menu-wrap{position:relative;margin-left:auto}
+    .video-menu{position:absolute;right:0;bottom:42px;z-index:20;width:218px;padding:6px;background:#252525;color:#f5f5f5;border:1px solid rgba(255,255,255,.12);border-radius:8px;box-shadow:0 8px 28px rgba(0,0,0,.5);font:14px Arial,sans-serif}
+    .video-menu[hidden],.video-speed-options[hidden]{display:none!important}
+    .video-menu button{display:flex;align-items:center;justify-content:space-between;width:100%;padding:10px 11px;border-radius:5px;text-align:left}
+    .video-menu .menu-divider{height:1px;background:rgba(255,255,255,.14);margin:5px 2px}
+    .video-speed-options{padding:4px 0 4px 12px}
+    .video-speed-options button{padding:8px 10px}
+    .video-speed-options button[aria-checked="true"]{color:#b8d7ff}
+    .video-menu button.delete-video-option{color:#ffaaa3}
+    .video-menu-status{padding:7px 10px;color:#c9c9c9;font-size:11px}
+    @media(max-width:560px){.video-controls{gap:6px;padding:8px}.video-time{font-size:10px}#video-volume{width:48px}}
     .section-card{margin-top:22px;padding:22px;border:1px solid rgba(255,255,255,.08);border-radius:18px;background:linear-gradient(145deg,#191d18,#121512)}
     .section-card h2{margin:0 0 6px;font-size:1.18rem}
     .section-card p.sub{margin:0 0 16px;color:var(--muted);font-size:.86rem}
@@ -42,8 +62,40 @@
       <span id="match-status" class="status-pill status-pending">PENDING SCAN</span>
     </div>
 
-    <div class="video-box">
-      <video id="match-player" controls playsinline preload="metadata"></video>
+    <div class="video-box" id="video-box">
+      <div class="video-stage">
+        <video id="match-player" playsinline preload="metadata"></video>
+      </div>
+      <div class="video-controls" aria-label="Video controls">
+        <button id="video-play" class="video-control-btn" type="button" aria-label="Play" title="Play">▶</button>
+        <span id="video-current" class="video-time">0:00</span>
+        <input id="video-seek" class="video-range" type="range" min="0" max="1000" value="0" aria-label="Seek video" />
+        <span id="video-duration" class="video-time">0:00</span>
+        <button id="video-mute" class="video-control-btn" type="button" aria-label="Mute" title="Mute">🔊</button>
+        <input id="video-volume" class="video-range" type="range" min="0" max="1" step="0.05" value="1" aria-label="Volume" />
+        <button id="video-fullscreen" class="video-control-btn" type="button" aria-label="Full screen" title="Full screen">⛶</button>
+        <div class="video-menu-wrap">
+          <button id="video-menu-toggle" class="video-control-btn" type="button" aria-label="More options" aria-expanded="false" title="More options">⋮</button>
+          <div id="video-menu" class="video-menu" role="menu" hidden>
+            <button id="speed-toggle" type="button" role="menuitem" aria-expanded="false"><span>Playback speed</span><span id="speed-label">Normal ›</span></button>
+            <div id="video-speed-options" class="video-speed-options" hidden>
+              <button type="button" data-speed="0.5">0.5x</button>
+              <button type="button" data-speed="0.75">0.75x</button>
+              <button type="button" data-speed="1" aria-checked="true">Normal</button>
+              <button type="button" data-speed="1.25">1.25x</button>
+              <button type="button" data-speed="1.5">1.5x</button>
+              <button type="button" data-speed="1.75">1.75x</button>
+              <button type="button" data-speed="2">2x</button>
+            </div>
+            <div class="menu-divider"></div>
+            <button id="video-pip" type="button" role="menuitem"><span>Picture-in-picture</span><span>▣</span></button>
+            <button id="video-download" type="button" role="menuitem"><span>Download</span><span>↓</span></button>
+            <div class="menu-divider"></div>
+            <button id="video-delete" class="delete-video-option" type="button" role="menuitem"><span>Delete video</span><span>×</span></button>
+            <div id="video-menu-status" class="video-menu-status" role="status" aria-live="polite"></div>
+          </div>
+        </div>
+      </div>
     </div>
 
     <!-- 1. YOLO Fight Timestamps (-20s to +50s rolling) -->
@@ -97,6 +149,19 @@
     const matchId = params.get("id");
     const player = document.getElementById("match-player");
     const VIDEO_BUCKET = "huntsense-videos";
+    const playBtn = document.getElementById("video-play");
+    const seek = document.getElementById("video-seek");
+    const currentTimeEl = document.getElementById("video-current");
+    const durationEl = document.getElementById("video-duration");
+    const muteBtn = document.getElementById("video-mute");
+    const volume = document.getElementById("video-volume");
+    const menuToggle = document.getElementById("video-menu-toggle");
+    const menu = document.getElementById("video-menu");
+    const speedToggle = document.getElementById("speed-toggle");
+    const speedOptions = document.getElementById("video-speed-options");
+    const menuStatus = document.getElementById("video-menu-status");
+    let currentMatch = null;
+    let currentUser = null;
 
     function fmtTime(sec) {
       const m = Math.floor(sec / 60);
@@ -110,7 +175,155 @@
       player.scrollIntoView({ behavior: "smooth", block: "center" });
     };
 
+    function setMenuStatus(message) {
+      menuStatus.textContent = message || "";
+    }
+
+    function closeVideoMenu() {
+      menu.hidden = true;
+      menuToggle.setAttribute("aria-expanded", "false");
+      speedOptions.hidden = true;
+      speedToggle.setAttribute("aria-expanded", "false");
+    }
+
+    function syncPlayButton() {
+      const playing = !player.paused && !player.ended;
+      playBtn.textContent = playing ? "Ⅱ" : "▶";
+      playBtn.setAttribute("aria-label", playing ? "Pause" : "Play");
+      playBtn.title = playing ? "Pause" : "Play";
+    }
+
+    playBtn.addEventListener("click", () => {
+      if (player.paused) player.play().catch(() => setMenuStatus("Playback could not start."));
+      else player.pause();
+    });
+    player.addEventListener("play", syncPlayButton);
+    player.addEventListener("pause", syncPlayButton);
+    player.addEventListener("timeupdate", () => {
+      currentTimeEl.textContent = fmtTime(player.currentTime || 0);
+      if (Number.isFinite(player.duration) && player.duration > 0) {
+        seek.value = String(Math.round((player.currentTime / player.duration) * 1000));
+      }
+    });
+    player.addEventListener("loadedmetadata", () => {
+      durationEl.textContent = fmtTime(player.duration);
+      currentTimeEl.textContent = fmtTime(player.currentTime || 0);
+    });
+    seek.addEventListener("input", () => {
+      if (Number.isFinite(player.duration) && player.duration > 0) {
+        player.currentTime = (Number(seek.value) / 1000) * player.duration;
+      }
+    });
+    muteBtn.addEventListener("click", () => {
+      player.muted = !player.muted;
+      muteBtn.textContent = player.muted || player.volume === 0 ? "🔇" : "🔊";
+      muteBtn.setAttribute("aria-label", player.muted ? "Unmute" : "Mute");
+    });
+    volume.addEventListener("input", () => {
+      player.volume = Number(volume.value);
+      player.muted = player.volume === 0;
+      muteBtn.textContent = player.muted ? "🔇" : "🔊";
+    });
+    document.getElementById("video-fullscreen").addEventListener("click", async () => {
+      try {
+        const box = document.getElementById("video-box");
+        if (document.fullscreenElement) await document.exitFullscreen();
+        else if (box.requestFullscreen) await box.requestFullscreen();
+      } catch (error) {
+        setMenuStatus("Full screen is unavailable in this browser.");
+      }
+    });
+    menuToggle.addEventListener("click", () => {
+      menu.hidden = !menu.hidden;
+      menuToggle.setAttribute("aria-expanded", String(!menu.hidden));
+      if (menu.hidden) speedOptions.hidden = true;
+    });
+    speedToggle.addEventListener("click", () => {
+      speedOptions.hidden = !speedOptions.hidden;
+      speedToggle.setAttribute("aria-expanded", String(!speedOptions.hidden));
+    });
+    speedOptions.querySelectorAll("[data-speed]").forEach((button) => {
+      button.addEventListener("click", () => {
+        player.playbackRate = Number(button.dataset.speed);
+        document.getElementById("speed-label").textContent =
+          button.dataset.speed === "1" ? "Normal ›" : button.dataset.speed + "x ›";
+        speedOptions.querySelectorAll("[data-speed]").forEach((option) =>
+          option.setAttribute("aria-checked", String(option === button))
+        );
+        setMenuStatus("");
+      });
+    });
+    document.getElementById("video-pip").addEventListener("click", async () => {
+      try {
+        if (document.pictureInPictureElement) await document.exitPictureInPicture();
+        else if (player.requestPictureInPicture) await player.requestPictureInPicture();
+        else if (player.webkitSetPresentationMode) player.webkitSetPresentationMode("picture-in-picture");
+        else setMenuStatus("Picture-in-picture is not supported by this browser.");
+      } catch (error) {
+        setMenuStatus("Picture-in-picture could not start. Try playing the video first.");
+      }
+    });
+    document.getElementById("video-download").addEventListener("click", async () => {
+      if (!currentMatch?.video_path) return;
+      setMenuStatus("Preparing download…");
+      const { data, error } = await supabase.storage.from(VIDEO_BUCKET)
+        .createSignedUrl(currentMatch.video_path, 60, { download: true });
+      if (error || !data?.signedUrl) {
+        setMenuStatus("Download failed: " + (error?.message || "Could not create download link."));
+        return;
+      }
+      const link = document.createElement("a");
+      link.href = data.signedUrl;
+      link.download = (currentMatch.video_title || "HuntSense video");
+      document.body.append(link);
+      link.click();
+      link.remove();
+      setMenuStatus("Download started.");
+    });
+    document.getElementById("video-delete").addEventListener("click", async () => {
+      if (!currentMatch || !currentUser || currentMatch.user_id !== currentUser.id) {
+        setMenuStatus("You can only delete videos in your own account.");
+        return;
+      }
+      const confirmed = window.confirm("Permanently delete “" + (currentMatch.video_title || "this video") + "”? This cannot be undone.");
+      if (!confirmed) return;
+      const deleteButton = document.getElementById("video-delete");
+      deleteButton.disabled = true;
+      setMenuStatus("Deleting video…");
+      const { error: storageError } = await supabase.storage.from(VIDEO_BUCKET).remove([currentMatch.video_path]);
+      if (storageError) {
+        deleteButton.disabled = false;
+        setMenuStatus("Could not delete video file: " + storageError.message);
+        return;
+      }
+      const { data: deletedRows, error: rowError } = await supabase
+        .from("match_analyses")
+        .delete()
+        .eq("id", currentMatch.id)
+        .eq("user_id", currentUser.id)
+        .select("id");
+      if (rowError || !deletedRows?.length) {
+        deleteButton.disabled = false;
+        setMenuStatus("The video file was removed, but its library record could not be deleted. " + (rowError?.message || "Refresh and contact support."));
+        return;
+      }
+      window.location.replace("index.html");
+    });
+
+    document.addEventListener("click", (event) => {
+      if (!event.target.closest(".video-menu-wrap")) closeVideoMenu();
+    });
+    document.addEventListener("keydown", (event) => {
+      if (event.key === "Escape") closeVideoMenu();
+    });
+
     async function loadMatch() {
+      const { data: { user }, error: authError } = await supabase.auth.getUser();
+      if (authError || !user) {
+        window.location.replace("login.html");
+        return;
+      }
+      currentUser = user;
       if (!matchId) return;
       const { data: match, error } = await supabase
         .from("match_analyses")
@@ -123,6 +336,8 @@
         return;
       }
 
+      currentMatch = match;
+      document.getElementById("video-delete").hidden = match.user_id !== currentUser.id;
       document.getElementById("match-title").textContent = match.video_title;
       const statusEl = document.getElementById("match-status");
       statusEl.textContent = match.status.toUpperCase();
@@ -147,6 +362,7 @@
       player.addEventListener("loadedmetadata", () => {
         if (Number.isFinite(player.duration) && player.duration > 0) {
           player.setAttribute("aria-label", "Video duration " + fmtTime(player.duration));
+          durationEl.textContent = fmtTime(player.duration);
         }
       }, { once: true });
 
