@@ -17,7 +17,7 @@
 <body>
   <header class="topbar" style="justify-content:space-between">
     <a class="account-link" href="index.html">← My Videos</a>
-    <a class="account-link" href="admin.html">Admin Control</a>
+    <a id="admin-nav-link" class="account-link" href="admin.html" hidden>Admin Control</a>
   </header>
 
   <main class="hub-wrap">
@@ -74,7 +74,10 @@
 
     async function loadAnalystHub() {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
+      if (!user) { window.location.replace("login.html"); return; }
+      if ((user.email || "").trim().toLowerCase() === "ryan@ratys.com" && user.email_confirmed_at) {
+        document.getElementById("admin-nav-link").hidden = false;
+      }
 
       // Populate dropdown with this month's matches
       const { data: matches } = await supabase

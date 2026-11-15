@@ -3,95 +3,84 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>HuntSense · Admin Control</title>
+  <title>HuntSense · Admin</title>
   <link rel="stylesheet" href="styles.css" />
   <style>
-    .admin-wrap{width:min(100% - 48px,1060px);margin:0 auto;padding:40px 0 80px}
-    .admin-top-grid{display:grid;grid-template-columns:1.2fr .8fr;gap:16px;margin:22px 0 34px}
-    .control-card{padding:24px;border:1px solid rgba(213,173,112,.25);border-radius:18px;background:linear-gradient(145deg,#1b1f1a,#131613)}
-    .master-btn{width:100%;margin-top:16px;padding:15px;border-radius:12px;font-size:1.02rem;font-weight:800;cursor:pointer}
-    .master-on{background:linear-gradient(145deg,#83a77b,#5a7d53);color:#0e140d}
-    .master-off{background:#2d312b;color:#f4f0e8;border:1px solid var(--line)}
-    .search-bar-row{display:flex;gap:10px;margin:14px 0 18px}
-    .user-table{width:100%;border:1px solid rgba(255,255,255,.08);border-radius:16px;overflow:hidden;background:#141714}
-    .user-row{display:grid;grid-template-columns:1fr 1.2fr auto;gap:14px;align-items:center;padding:15px 18px;border-bottom:1px solid rgba(255,255,255,.06)}
-    .user-row:last-child{border-bottom:0}
-    .review-card{display:grid;grid-template-columns:240px 1fr;gap:18px;align-items:center;padding:16px;border:1px solid var(--line);border-radius:14px;background:#151814;margin-bottom:12px}
-    .review-card img{width:100%;border-radius:10px}
-    @media(max-width:720px){.admin-top-grid,.user-row,.review-card{grid-template-columns:1fr}}
+    .admin-wrap{width:min(100% - 40px,900px);margin:0 auto;padding:38px 0 72px}
+    .admin-card{padding:24px;border:1px solid rgba(213,173,112,.25);border-radius:18px;background:linear-gradient(145deg,#1b1f1a,#131613);margin:22px 0}
+    .scanner-row{display:flex;justify-content:space-between;align-items:center;gap:18px;flex-wrap:wrap}
+    .scanner-state{font-size:1.2rem;font-weight:800}
+    .scanner-toggle{min-width:180px;padding:14px 20px;border-radius:12px;font-weight:800;cursor:pointer}
+    .scanner-on{background:linear-gradient(145deg,#83a77b,#5a7d53);color:#10160e}
+    .scanner-off{background:#2d312b;color:#f4f0e8;border:1px solid var(--line)}
+    .search-row{display:flex;gap:10px;margin:16px 0;flex-wrap:wrap}
+    .search-row input{flex:1;min-width:220px}
+    .account-list{border:1px solid rgba(255,255,255,.08);border-radius:14px;overflow:hidden;background:#141714}
+    .account-row{display:grid;grid-template-columns:1fr 1.2fr auto;gap:14px;align-items:center;padding:15px 18px;border-bottom:1px solid rgba(255,255,255,.06)}
+    .account-row:last-child{border-bottom:0}
+    .account-email{color:#ead8b8;overflow-wrap:anywhere}
+    .modal-panel{width:min(100% - 32px,520px);max-height:90vh;overflow:auto}
+    .modal-panel label{display:block;margin:12px 0 6px;color:var(--muted);font-size:.86rem}
+    .modal-panel input{width:100%}
+    .admin-note{color:var(--muted);font-size:.86rem;line-height:1.55}
+    @media(max-width:680px){.account-row{grid-template-columns:1fr}.scanner-row{align-items:flex-start}}
   </style>
 </head>
 <body hidden>
   <header class="topbar" style="justify-content:space-between">
     <a class="account-link" href="index.html">← My Videos</a>
-    <div style="display:flex;gap:10px;align-items:center">
-      <span style="color:var(--gold);font-size:.8rem;font-weight:700">ADMIN: ryan@ratys.com</span>
-      <a class="account-link" href="analysis.html">Analyst Hub</a>
-    </div>
+    <span style="color:var(--gold);font-size:.8rem;font-weight:700">ADMIN · ryan@ratys.com</span>
   </header>
 
   <main class="admin-wrap">
     <p class="eyebrow">PRIVATE ADMIN DASHBOARD</p>
-    <h1>HuntSense Control & Support</h1>
+    <h1>HuntSense Admin</h1>
 
-    <!-- 1. Single Master Switch + Pending Count -->
-    <div class="admin-top-grid">
-      <div class="control-card">
-        <p class="eyebrow">MASTER ANALYSIS SWITCH (LOCAL PC)</p>
-        <h2 id="scanner-state-label" style="margin:8px 0">Loading...</h2>
-        <p style="color:var(--muted);font-size:.86rem;margin:0">One switch to turn all AI analysis ON or OFF on your computer. Turn OFF while playing Hunt so your GPU stays 100% free.</p>
-        <button id="toggle-scanner-btn" class="master-btn master-off" type="button">Loading...</button>
+    <section class="admin-card" aria-labelledby="scanner-heading">
+      <p class="eyebrow">SCANNER CONTROL</p>
+      <div class="scanner-row">
+        <div>
+          <h2 id="scanner-heading" style="margin:6px 0">Scanner</h2>
+          <p id="scanner-state" class="scanner-state" aria-live="polite">Checking status…</p>
+          <p class="admin-note">This switch controls whether the scanner is enabled. The setting is saved on the server.</p>
+        </div>
+        <button id="scanner-toggle" class="scanner-toggle scanner-off" type="button" disabled>Loading…</button>
       </div>
-
-      <div class="control-card">
-        <p class="eyebrow">PENDING VIDEOS IN QUEUE</p>
-        <div id="pending-count" style="font-size:2.8rem;font-weight:800;color:var(--gold-bright);margin:10px 0">0</div>
-        <p style="color:var(--muted);font-size:.85rem;margin:0">Videos waiting to be scanned once you flip the Master Switch ON.</p>
-      </div>
-    </div>
-
-    <!-- 2. Customer Support Account Search & Editor -->
-    <section style="margin-bottom:42px">
-      <p class="eyebrow">CUSTOMER SUPPORT</p>
-      <h2 style="margin:6px 0">User Accounts & Search</h2>
-      <p style="color:var(--muted);font-size:.86rem;margin:0">Search by email to find any customer account and update their name, email, or password.</p>
-
-      <div class="search-bar-row">
-        <input id="user-search-input" type="search" placeholder="Search customer by email (e.g. player@email.com)..." />
-        <button id="user-search-btn" type="button" style="margin:0;white-space:nowrap">Search</button>
-      </div>
-
-      <p id="support-msg" class="message"></p>
-      <div id="user-list" class="user-table">
-        <div style="padding:20px;color:var(--muted)">Loading accounts...</div>
-      </div>
+      <p id="scanner-message" class="message" role="status"></p>
     </section>
 
-    <!-- 3. YOLO Quick Review Queue -->
-    <section>
-      <p class="eyebrow">ACTIVE LEARNING</p>
-      <h2 style="margin:6px 0">YOLO Quick Review Queue</h2>
-      <p style="color:var(--muted);font-size:.86rem;margin:0 0 16px">Approve or reject uncertain detections (70%–89% & random low-confidence frames).</p>
-      <div id="review-queue">Loading review frames...</div>
+    <section class="admin-card" aria-labelledby="accounts-heading">
+      <p class="eyebrow">ACCOUNT MANAGEMENT</p>
+      <h2 id="accounts-heading" style="margin:6px 0">Find an account</h2>
+      <p class="admin-note">Search by all or part of an email address. Matching account names and email addresses will appear below.</p>
+      <div class="search-row">
+        <input id="email-search" type="search" inputmode="email" autocomplete="off" placeholder="Search by email address…" aria-label="Search accounts by email" />
+        <button id="search-button" type="button" style="margin:0;white-space:nowrap">Search</button>
+      </div>
+      <p id="account-message" class="message" role="status"></p>
+      <div id="account-list" class="account-list" aria-live="polite">
+        <div style="padding:18px;color:var(--muted)">Enter at least two characters of an email address to search.</div>
+      </div>
     </section>
   </main>
 
-  <!-- Edit Customer Account Modal -->
-  <div id="edit-user-modal" class="title-modal" hidden>
+  <div id="edit-modal" class="title-modal" hidden>
     <div class="player-backdrop"></div>
-    <div class="title-panel">
-      <h2>Edit Customer Account</h2>
-      <p>Update name, email, or set a new password for this user.</p>
+    <div class="title-panel modal-panel" role="dialog" aria-modal="true" aria-labelledby="edit-heading">
+      <h2 id="edit-heading">Edit account</h2>
       <input id="edit-user-id" type="hidden" />
-      <label for="edit-user-name">Full Name</label>
-      <input id="edit-user-name" type="text" placeholder="Customer name" />
-      <label for="edit-user-email" style="margin-top:12px">Email Address</label>
-      <input id="edit-user-email" type="email" placeholder="customer@email.com" />
-      <label for="edit-user-pass" style="margin-top:12px">New Password (leave blank to keep current)</label>
-      <input id="edit-user-pass" type="text" placeholder="Enter new password..." />
+      <p id="edit-current-email" class="admin-note"></p>
+      <label for="edit-name">Account name</label>
+      <input id="edit-name" type="text" maxlength="100" autocomplete="off" />
+      <label for="edit-email">Email address</label>
+      <input id="edit-email" type="email" maxlength="254" autocomplete="off" />
+      <label for="edit-password">Set a new password</label>
+      <input id="edit-password" type="password" minlength="8" maxlength="72" autocomplete="new-password" placeholder="Leave blank to keep the current password" />
+      <p class="admin-note">Changing an email address may require the new email owner to confirm it. Passwords are never displayed.</p>
+      <p id="edit-message" class="message" role="status"></p>
       <div class="title-actions">
-        <button id="cancel-edit-btn" class="secondary" type="button">Cancel</button>
-        <button id="confirm-edit-btn" type="button">Confirm Changes</button>
+        <button id="cancel-edit" class="secondary" type="button">Cancel</button>
+        <button id="save-edit" type="button">Save changes</button>
       </div>
     </div>
   </div>
@@ -100,148 +89,179 @@
     import { supabase } from "./supabase.js";
 
     const ADMIN_EMAIL = "ryan@ratys.com";
+    const FUNCTION_NAME = "huntsense-admin";
+    const $ = (id) => document.getElementById(id);
+    let currentUser = null;
     let scannerEnabled = false;
+    let selectedOriginal = { name: "", email: "" };
 
     async function verifyAdmin() {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user || user.email?.toLowerCase() !== ADMIN_EMAIL) {
-        window.location.replace(user ? "index.html" : "login.html");
+      const { data: { user }, error } = await supabase.auth.getUser();
+      if (error || !user) {
+        window.location.replace("login.html");
         return false;
       }
+      if ((user.email || "").trim().toLowerCase() !== ADMIN_EMAIL || !user.email_confirmed_at) {
+        window.location.replace("index.html");
+        return false;
+      }
+      currentUser = user;
       document.body.hidden = false;
       return true;
     }
 
-    async function loadDashboard() {
-      const ok = await verifyAdmin();
-      if (!ok) return;
-
-      // Load Master Switch state
-      const { data: settings } = await supabase.from("system_settings").select("*").eq("id", 1).single();
-      if (settings) {
-        scannerEnabled = settings.scanner_enabled;
-        renderSwitch();
-      }
-
-      // Load Pending count
-      const { count } = await supabase
-        .from("match_analyses")
-        .select("*", { count: "exact", head: true })
-        .in("status", ["pending", "scanning"]);
-      document.getElementById("pending-count").textContent = count || 0;
-
-      // Load Customer Accounts
-      await searchUsers("");
-
-      // Load YOLO Review Queue
-      const { data: frames } = await supabase
-        .from("yolo_review_queue")
-        .select("*")
-        .eq("status", "pending")
-        .limit(15);
-
-      const qEl = document.getElementById("review-queue");
-      if (!frames || frames.length === 0) {
-        qEl.innerHTML = `<p style="color:var(--muted)">No uncertain frames waiting for review.</p>`;
-      } else {
-        qEl.innerHTML = frames.map(f => `
-          <div class="review-card" id="frame-${f.id}">
-            <img src="${f.image_url}" alt="YOLO frame" />
-            <div>
-              <p class="eyebrow">PREDICTED: ${f.predicted_label.toUpperCase()} (${Math.round(f.confidence * 100)}%)</p>
-              <div style="display:flex;gap:10px;margin-top:12px">
-                <button onclick="decideFrame('${f.id}', 'approved')" style="margin:0;background:#6d9465;color:#fff">✓ Approve</button>
-                <button onclick="decideFrame('${f.id}', 'rejected')" class="secondary" style="margin:0">✕ Delete</button>
-              </div>
-            </div>
-          </div>
-        `).join("");
-      }
+    async function adminRequest(payload) {
+      const { data, error } = await supabase.functions.invoke(FUNCTION_NAME, { body: payload });
+      if (error) throw new Error(error.message || "Admin request failed.");
+      if (data?.error) throw new Error(data.error);
+      return data;
     }
 
-    function renderSwitch() {
-      const btn = document.getElementById("toggle-scanner-btn");
-      const lbl = document.getElementById("scanner-state-label");
-      lbl.textContent = scannerEnabled ? "ANALYSIS IS ON (RUNNING)" : "ANALYSIS IS OFF (PAUSED)";
-      btn.textContent = scannerEnabled ? "Turn Analysis OFF" : "Turn Analysis ON";
-      btn.className = `master-btn ${scannerEnabled ? "master-on" : "master-off"}`;
+    function renderScanner() {
+      $("scanner-state").textContent = scannerEnabled ? "ON" : "OFF";
+      const button = $("scanner-toggle");
+      button.textContent = scannerEnabled ? "Turn scanner OFF" : "Turn scanner ON";
+      button.className = "scanner-toggle " + (scannerEnabled ? "scanner-on" : "scanner-off");
+      button.disabled = false;
     }
 
-    document.getElementById("toggle-scanner-btn").onclick = async () => {
-      scannerEnabled = !scannerEnabled;
-      await supabase.from("system_settings").update({ scanner_enabled: scannerEnabled }).eq("id", 1);
-      renderSwitch();
-    };
+    async function loadScanner() {
+      const result = await adminRequest({ action: "scanner_status" });
+      scannerEnabled = result.scanner_enabled === true;
+      renderScanner();
+    }
 
-    async function searchUsers(query) {
-      const listEl = document.getElementById("user-list");
-      const { data: users, error } = await supabase.rpc("admin_list_users", { search_email: query });
-      if (error) {
-        listEl.innerHTML = `<div style="padding:18px;color:#f0a29a">Error loading users: ${error.message}</div>`;
+    $("scanner-toggle").addEventListener("click", async () => {
+      const button = $("scanner-toggle");
+      button.disabled = true;
+      $("scanner-message").textContent = "Saving scanner setting…";
+      try {
+        const result = await adminRequest({ action: "scanner_set", scanner_enabled: !scannerEnabled });
+        scannerEnabled = result.scanner_enabled === true;
+        renderScanner();
+        $("scanner-message").textContent = "Scanner setting saved.";
+      } catch (error) {
+        $("scanner-message").textContent = error.message;
+        button.disabled = false;
+      }
+    });
+
+    function renderAccounts(users) {
+      const list = $("account-list");
+      list.replaceChildren();
+      if (!users.length) {
+        const empty = document.createElement("div");
+        empty.style.padding = "18px";
+        empty.style.color = "var(--muted)";
+        empty.textContent = "No accounts matched that email search.";
+        list.append(empty);
         return;
       }
-      if (!users || users.length === 0) {
-        listEl.innerHTML = `<div style="padding:18px;color:var(--muted)">No accounts found matching "${query}".</div>`;
-        return;
+
+      for (const user of users) {
+        const row = document.createElement("div");
+        row.className = "account-row";
+        const name = document.createElement("strong");
+        name.textContent = user.name || "No name set";
+        const email = document.createElement("div");
+        email.className = "account-email";
+        email.textContent = user.email || "(No email)";
+        const edit = document.createElement("button");
+        edit.type = "button";
+        edit.className = "secondary";
+        edit.style.margin = "0";
+        edit.textContent = "Edit";
+        edit.addEventListener("click", () => openEditor(user));
+        row.append(name, email, edit);
+        list.append(row);
       }
-      listEl.innerHTML = users.map(u => `
-        <div class="user-row">
-          <div>
-            <strong>${u.full_name || "No name set"}</strong>
-            <div style="color:var(--muted);font-size:.75rem">Joined ${new Date(u.created_at).toLocaleDateString()}</div>
-          </div>
-          <div style="color:#ead8b8;font-size:.9rem;overflow-wrap:anywhere">${u.email}</div>
-          <button type="button" class="secondary" style="margin:0;padding:9px 14px"
-            onclick='openEditModal(${JSON.stringify(u.id)}, ${JSON.stringify(u.full_name || "")}, ${JSON.stringify(u.email)})'>
-            Edit Account
-          </button>
-        </div>
-      `).join("");
     }
 
-    document.getElementById("user-search-btn").onclick = () => {
-      searchUsers(document.getElementById("user-search-input").value.trim());
-    };
-    document.getElementById("user-search-input").onkeyup = (e) => {
-      if (e.key === "Enter") searchUsers(e.target.value.trim());
-    };
+    async function searchAccounts() {
+      const query = $("email-search").value.trim();
+      if (query.length < 2) {
+        $("account-message").textContent = "Enter at least two characters to search.";
+        return;
+      }
+      $("search-button").disabled = true;
+      $("account-message").textContent = "Searching accounts…";
+      try {
+        const result = await adminRequest({ action: "list", search_email: query });
+        renderAccounts(result.users || []);
+        $("account-message").textContent = (result.users || []).length + " matching account(s).";
+      } catch (error) {
+        $("account-message").textContent = error.message;
+      } finally {
+        $("search-button").disabled = false;
+      }
+    }
 
-    const modal = document.getElementById("edit-user-modal");
-    window.openEditModal = (id, name, email) => {
-      document.getElementById("edit-user-id").value = id;
-      document.getElementById("edit-user-name").value = name;
-  document.getElementById("edit-user-email").value = email;
-  document.getElementById("edit-user-pass").value = "";
-  modal.hidden = false;
-  };
-  document.getElementById("cancel-edit-btn").onclick = () => {
-  modal.hidden = true;
-  };
-  document.getElementById("confirm-edit-btn").onclick = async () => {
-  const id = document.getElementById("edit-user-id").value;
-  const name = document.getElementById("edit-user-name").value;
-  const email = document.getElementById("edit-user-email").value;
-  const pass = document.getElementById("edit-user-pass").value;
-  const btn = document.getElementById("confirm-edit-btn");
-  btn.disabled = true;
-  const { error } = await supabase.rpc("admin_update_user", {
-  target_user_id: id,
-  new_name: name,
-  new_email: email,
-  new_password: pass
-  });
-  btn.disabled = false;
-  modal.hidden = true;
-  const msgEl = document.getElementById("support-msg");
-  if (error) {
-  msgEl.textContent = Failed to update user: ${error.message};
-  } else {
-  msgEl.textContent = Updated account for ${email}.;
-  searchUsers(document.getElementById("user-search-input").value.trim());
-  }
-  };
-  window.decideFrame = async (id, status) => {
-  await supabase.from("yolo_review_queue").update({ status }).eq("id", id);
-  document.getElementById(frame-${id})?.remove();
-  };
-  loadDashboard();
+    $("search-button").addEventListener("click", searchAccounts);
+    $("email-search").addEventListener("keydown", (event) => {
+      if (event.key === "Enter") searchAccounts();
+    });
+
+    function openEditor(user) {
+      $("edit-user-id").value = user.id;
+      $("edit-current-email").textContent = "Account: " + (user.email || "(No email)");
+      selectedOriginal = { name: user.name || "", email: user.email || "" };
+      $("edit-name").value = user.name || "";
+      $("edit-email").value = user.email || "";
+      $("edit-password").value = "";
+      $("edit-message").textContent = "";
+      $("edit-modal").hidden = false;
+      $("edit-name").focus();
+    }
+
+    function closeEditor() {
+      $("edit-modal").hidden = true;
+      $("edit-password").value = "";
+    }
+
+    $("cancel-edit").addEventListener("click", closeEditor);
+
+    $("save-edit").addEventListener("click", async () => {
+      const id = $("edit-user-id").value;
+      const changes = [];
+      const nextName = $("edit-name").value.trim();
+      const nextEmail = $("edit-email").value.trim();
+      if (nextName !== selectedOriginal.name) changes.push({ field: "name", value: nextName });
+      if (nextEmail.toLowerCase() !== selectedOriginal.email.toLowerCase()) changes.push({ field: "email", value: nextEmail });
+      const password = $("edit-password").value;
+      if (password) changes.push({ field: "password", value: password });
+      if (!changes.length) { $("edit-message").textContent = "No changes to save."; return; }
+
+      const save = $("save-edit");
+      save.disabled = true;
+      $("edit-message").textContent = "Saving account changes…";
+      try {
+        for (const change of changes) {
+          await adminRequest({ action: "update", user_id: id, field: change.field, value: change.value });
+        }
+        closeEditor();
+        $("account-message").textContent = "Account updated.";
+        await searchAccounts();
+      } catch (error) {
+        $("edit-message").textContent = error.message;
+      } finally {
+        save.disabled = false;
+      }
+    });
+
+    supabase.auth.onAuthStateChange((_event, session) => {
+      const email = session?.user?.email?.trim().toLowerCase();
+      if (!session || email !== ADMIN_EMAIL) window.location.replace("login.html");
+    });
+
+    if (await verifyAdmin()) {
+      try {
+        await loadScanner();
+      } catch (error) {
+        $("scanner-state").textContent = "Unavailable";
+        $("scanner-message").textContent = error.message;
+        $("scanner-toggle").disabled = true;
+      }
+    }
+  </script>
+</body>
+</html>
