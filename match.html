@@ -96,6 +96,7 @@
     const params = new URLSearchParams(window.location.search);
     const matchId = params.get("id");
     const player = document.getElementById("match-player");
+    const VIDEO_BUCKET = "huntsense-videos";
 
     function fmtTime(sec) {
       const m = Math.floor(sec / 60);
@@ -127,9 +128,31 @@
       statusEl.textContent = match.status.toUpperCase();
       statusEl.className = `status-pill ${match.status === "ready" ? "status-ready" : "status-pending"}`;
 
-      // Load signed video URL from Supabase Storage ('videos' bucket)
-      const { data: signed } = await supabase.storage.from("videos").createSignedUrl(match.video_path, 3600);
-      if (signed?.signedUrl) player.src = signed.signedUrl;
+      // Load from the private bucket used by the upload page.
+      const { data: signed, error: signedError } = await supabase.storage
+        .from(VIDEO_BUCKET)
+        .createSignedUrl(match.video_path, 3600);
+
+      if (signedError || !signed?.signedUrl) {
+        console.error("Could not create video URL:", signedError);
+        const playerError = document.createElement("p");
+        playerError.style.cssText = "padding:16px;color:#f0a29a";
+        playerError.textContent = "This video could not be loaded. " + (signedError?.message || "Please refresh and try again.");
+        player.parentElement.append(playerError);
+      } else {
+        player.src = signed.signedUrl;
+        player.load();
+      }
+
+      player.addEventListener("loadedmetadata", () => {
+        if (Number.isFinite(player.duration) && player.duration > 0) {
+          player.setAttribute("aria-label", "Video duration " + fmtTime(player.duration));
+        }
+      }, { once: true });
+
+      player.addEventListener("error", () => {
+        console.error("Video playback error:", player.error);
+      }, { once: true });
 
       const fights = match.timestamps || [];
       if (fights.length > 0) {
