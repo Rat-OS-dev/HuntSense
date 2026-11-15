@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Match Breakdown · HuntSense</title>
+  <link rel="stylesheet" href="styles.css" />
+  <style>
+    .match-wrap{width:min(100% - 48px,1060px);margin:0 auto;padding:34px 0 80px}
+    .match-head{display:flex;justify-content:space-between;align-items:center;gap:16px;margin-bottom:20px;flex-wrap:wrap}
+    .status-pill{padding:6px 12px;border-radius:999px;font-size:.75rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;border:1px solid var(--line)}
+    .status-pending{background:rgba(213,173,112,.12);color:#f0c987}
+    .status-ready{background:rgba(131,167,123,.14);color:#a7d39c;border-color:rgba(131,167,123,.35)}
+    .video-box{border:1px solid rgba(213,173,112,.25);border-radius:18px;overflow:hidden;background:#070807}
+    .video-box video{display:block;width:100%;max-height:66vh;background:#050605}
+    .section-card{margin-top:22px;padding:22px;border:1px solid rgba(255,255,255,.08);border-radius:18px;background:linear-gradient(145deg,#191d18,#121512)}
+    .section-card h2{margin:0 0 6px;font-size:1.18rem}
+    .section-card p.sub{margin:0 0 16px;color:var(--muted);font-size:.86rem}
+    .pill-grid{display:flex;flex-wrap:wrap;gap:10px}
+    .ts-pill{margin:0;padding:10px 14px;border:1px solid rgba(213,173,112,.3);border-radius:11px;background:rgba(213,173,112,.08);color:#f3e2c3;font-size:.84rem;font-weight:650;cursor:pointer}
+    .ts-pill:hover{background:rgba(213,173,112,.2)}
+    .reaction-row{display:flex;justify-content:space-between;align-items:center;padding:12px 14px;border-bottom:1px solid rgba(255,255,255,.06)}
+    .reaction-row:last-child{border-bottom:0}
+    .big-stat{font-size:2.4rem;font-weight:760;color:var(--gold-bright);margin:6px 0}
+    .util-badge{display:inline-block;padding:4px 9px;border-radius:7px;font-size:.76rem;font-weight:700;margin-right:8px}
+    .util-hit{background:rgba(131,167,123,.18);color:#a7d39c}
+    .util-miss{background:rgba(220,90,75,.16);color:#f0a29a}
+  </style>
+</head>
+<body>
+  <header class="topbar" style="justify-content:space-between">
+    <a class="account-link" href="index.html">← Back to My Videos</a>
+    <a class="account-link" href="analysis.html">Overall Analyst Hub</a>
+  </header>
+
+  <main class="match-wrap">
+    <div class="match-head">
+      <div>
+        <p class="eyebrow">MATCH VIDEO ANALYST</p>
+        <h1 id="match-title" style="margin:4px 0 0">Loading match...</h1>
+      </div>
+      <span id="match-status" class="status-pill status-pending">PENDING SCAN</span>
+    </div>
+
+    <div class="video-box">
+      <video id="match-player" controls playsinline preload="metadata"></video>
+    </div>
+
+    <!-- 1. YOLO Fight Timestamps (-20s to +50s rolling) -->
+    <section class="section-card">
+      <h2>YOLO Fight Timestamps (-20s to +50s)</h2>
+      <p class="sub">Click any timestamp to jump straight to 20 seconds before the enemy appeared.</p>
+      <div id="timestamp-pills" class="pill-grid">
+        <span style="color:var(--muted)">Waiting for YOLO scan...</span>
+      </div>
+    </section>
+
+    <!-- 2. Per-Timestamp Reaction Time -->
+    <section class="section-card">
+      <h2>Reaction Time Per Fight</h2>
+      <p class="sub">Measured from the exact frame an enemy Hunter appears to when your mouse noticeably accelerates toward them.</p>
+      <div id="reaction-list">
+        <p style="color:var(--muted);margin:0">No reaction timestamps recorded yet.</p>
+      </div>
+    </section>
+
+    <!-- 3. Shots Hit Statistic -->
+    <section class="section-card">
+      <h2>Shots Hit Accuracy</h2>
+      <p class="sub">Percentage of fired shots that landed an enemy hit marker in this match.</p>
+      <div id="shots-pct" class="big-stat">—%</div>
+      <small id="shots-detail" style="color:var(--muted)">0 hits / 0 shots tracked</small>
+    </section>
+
+    <!-- 4. Grenade & Utility Hit/Miss Tracker (Choke Bombs Excluded) -->
+    <section class="section-card">
+      <h2>Grenade & Utility Accuracy (Choke Bombs Excluded)</h2>
+      <p class="sub">Tracks offensive throwables (Frags, Dynamite, Hive, Flash, Fire) that scored an X hit marker vs. missed. Choke bombs do not count.</p>
+      <div id="utility-stats" style="margin-bottom:12px;font-weight:700;color:#ead8b8">—% Utility Hit Rate</div>
+      <div id="utility-list" class="pill-grid">
+        <span style="color:var(--muted)">No offensive utility throws detected yet.</span>
+      </div>
+    </section>
+
+    <!-- 5. Most Used Gun (In Fight Clips Only) -->
+    <section class="section-card">
+      <h2>Most Used Gun (In Fights)</h2>
+      <p class="sub">Primary weapon used most actively inside your -20s to +50s PvP fight clips.</p>
+      <div id="fight-gun" class="big-stat" style="font-size:1.85rem">Not identified yet</div>
+    </section>
+  </main>
+
+  <script type="module">
+    import { supabase } from "./supabase.js";
+
+    const params = new URLSearchParams(window.location.search);
+    const matchId = params.get("id");
+    const player = document.getElementById("match-player");
+
+    function fmtTime(sec) {
+      const m = Math.floor(sec / 60);
+      const s = Math.floor(sec % 60);
+      return `${m}:${String(s).padStart(2, "0")}`;
+    }
+
+    window.jumpTo = (sec) => {
+      player.currentTime = Math.max(0, sec);
+      player.play();
+      player.scrollIntoView({ behavior: "smooth", block: "center" });
+    };
+
+    async function loadMatch() {
+      if (!matchId) return;
+      const { data: match, error } = await supabase
+        .from("match_analyses")
+        .select("*")
+        .eq("id", matchId)
+        .single();
+
+      if (error || !match) {
+        document.getElementById("match-title").textContent = "Match not found";
+        return;
+      }
+
+      document.getElementById("match-title").textContent = match.video_title;
+      const statusEl = document.getElementById("match-status");
+      statusEl.textContent = match.status.toUpperCase();
+      statusEl.className = `status-pill ${match.status === "ready" ? "status-ready" : "status-pending"}`;
+
+      // Load signed video URL from Supabase Storage ('videos' bucket)
+      const { data: signed } = await supabase.storage.from("videos").createSignedUrl(match.video_path, 3600);
+      if (signed?.signedUrl) player.src = signed.signedUrl;
+
+      const fights = match.timestamps || [];
+      if (fights.length > 0) {
+        document.getElementById("timestamp-pills").innerHTML = fights.map((f, i) =>
+          `<button class="ts-pill" onclick="jumpTo(${f.start_sec})">▶ Fight #${i + 1} (${fmtTime(f.start_sec)} – ${fmtTime(f.end_sec)})</button>`
+        ).join("");
+
+        document.getElementById("reaction-list").innerHTML = fights.map((f, i) => `
+          <div class="reaction-row">
+            <div>
+              <strong>Fight #${i + 1} · Enemy Spotted at ${fmtTime(f.start_sec + 20)}</strong>
+              <div style="color:var(--muted);font-size:.8rem">${f.notes || "Mouse chop detected toward target"}</div>
+            </div>
+            <div style="font-size:1.25rem;font-weight:750;color:var(--gold-bright)">${f.reaction_ms ? f.reaction_ms + " ms" : "— ms"}</div>
+          </div>
+        `).join("");
+      }
+
+      document.getElementById("shots-pct").textContent = `${match.shots_hit_pct ?? 0}%`;
+      document.getElementById("shots-detail").textContent = `${match.shots_hit || 0} hits / ${match.shots_fired || 0} shots fired`;
+
+      const utils = match.utility_events || [];
+      if (utils.length > 0) {
+        const hits = utils.filter(u => u.result === "hit").length;
+        const pct = Math.round((hits / utils.length) * 100);
+        document.getElementById("utility-stats").textContent = `${pct}% Utility Hit Rate (${hits} Hit / ${utils.length - hits} Missed)`;
+        document.getElementById("utility-list").innerHTML = utils.map(u => `
+          <button class="ts-pill" onclick="jumpTo(${Math.max(0, u.sec - 5)})">
+            <span class="util-badge ${u.result === "hit" ? "util-hit" : "util-miss"}">${u.result === "hit" ? "HIT (X)" : "MISS"}</span>
+            ${u.type} @ ${fmtTime(u.sec)}
+          </button>
+        `).join("");
+      }
+
+      document.getElementById("fight-gun").textContent = match.most_used_fight_gun || "Not identified yet";
+    }
+
+    loadMatch();
+  </script>
+</body>
+</html>
