@@ -50,11 +50,11 @@ def get_ocr_reader():
     return ocr_reader
 
 def tus_upload(local_path, object_path, content_type="video/mp4"):
-    endpoint = SUPABASE_URL.rstrip("/") + "/storage/v1/upload/resumable"
+    endpoint = SUPABASE_URL.replace(".supabase.co", ".storage.supabase.co").rstrip("/") + "/storage/v1/upload/resumable"
     metadata = {"bucketName": BUCKET, "objectName": object_path, "contentType": content_type, "cacheControl": "3600"}
     headers = {
         "apikey": SUPABASE_SERVICE_KEY, "Authorization": "Bearer " + SUPABASE_SERVICE_KEY,
-        "Tus-Resumable": "1.0.0", "Upload-Length": str(os.path.getsize(local_path)),
+        "Tus-Resumable": "1.0.0", "Upload-Length": str(os.path.getsize(local_path)), "x-upsert": "true",
         "Upload-Metadata": ",".join(f"{k} {base64.b64encode(v.encode()).decode()}" for k,v in metadata.items())
     }
     created = requests.post(endpoint, headers=headers, timeout=60)
@@ -87,12 +87,15 @@ def compress_video(raw_path, out_path):
         "-vf", "scale=-2:720", "-c:v", "libx265", "-crf", "28", "-preset", "fast",
         "-c:a", "aac", "-b:a", "96k", out_path
     ]
-    subprocess.run(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    result = subprocess.run(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE, text=True)
+    if result.returncode:
+        raise RuntimeError("Video compression failed: " + result.stderr[-1500:])
 
 def cut_clip(video_path, start_sec, end_sec, clip_path):
     cmd = [
-        "ffmpeg", "-y", "-ss", str(max(0, start_sec)), "-to", str(end_sec),
-        "-i", video_path, "-c", "copy", clip_path
+        "ffmpeg", "-hide_banner", "-loglevel", "error", "-y",
+        "-ss", str(max(0, start_sec)), "-i", video_path,
+        "-t", str(max(1, end_sec - start_sec)), "-c", "copy", clip_path
     ]
     subprocess.run(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
@@ -166,16 +169,16 @@ def analyze_match(match_row, track_zombies):
 
             # Confidence Active Learning Queue (70-89% + 5% random low-confidence)
             if (0.70 <= conf < 0.90) or (0.25 <= conf < 0.70 and random.random() < 0.05):
-                snap_name = f"review/{match_id}_{frame_idx}.jpg"
-                _, buf = cv2.imencode(".jpg", frame)
-                supabase.storage.from_(BUCKET).upload(snap_name, buf.tobytes())
-                pub_url = supabase.storage.from_(BUCKET).get_public_url(snap_name)
-                supabase.table("yolo_review_queue").insert({
-                    "image_url": pub_url,
-                    "predicted_label": cls_name,
-                    "confidence": round(conf, 2),
-                    "bbox": box.xyxy[0].tolist()
-                }).execute()
+                try:
+                    snap_name = f"{match_row['user_id']}/review/{match_id}_{frame_idx}.jpg"
+                    _, buf = cv2.imencode(".jpg", frame)
+                    supabase.storage.from_(BUCKET).upload(snap_name, buf.tobytes(), {"content-type": "image/jpeg"})
+                    supabase.table("yolo_review_queue").insert({
+                        "image_url": snap_name, "predicted_label": cls_name,
+                        "confidence": round(conf, 2), "bbox": box.xyxy[0].tolist()
+                    }).execute()
+                except Exception as queue_error:
+                    log.debug("Optional review queue is not configured: %s", queue_error)
 
             if cls_name == "enemy_hunter" and conf >= 0.70:
                 enemy_found = True
