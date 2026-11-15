@@ -26,12 +26,34 @@
     </section>
   </main>
 
+  <div class="title-modal" id="title-modal" hidden role="dialog" aria-modal="true" aria-labelledby="title-modal-heading">
+    <div class="player-backdrop" data-cancel-title></div>
+    <section class="title-panel">
+      <h2 id="title-modal-heading">Name your clip</h2>
+      <p>Give this gameplay clip a title before saving it.</p>
+      <label for="clip-title-input">Clip title</label>
+      <input id="clip-title-input" type="text" maxlength="80" placeholder="e.g. Clean extraction" autocomplete="off">
+      <div class="title-actions">
+        <button class="secondary" id="cancel-title" type="button">Cancel</button>
+        <button id="save-title" type="button">Save clip</button>
+      </div>
+    </section>
+  </div>
+
   <div class="player-modal" id="player-modal" hidden role="dialog" aria-modal="true" aria-labelledby="player-title">
     <div class="player-backdrop" data-close-player></div>
     <section class="player-panel">
       <div class="player-heading">
         <div><p class="eyebrow">HUNTSENSE PLAYER</p><h2 id="player-title">Your video</h2></div>
-        <button class="player-close" type="button" data-close-player aria-label="Close player">×</button>
+        <div class="player-actions">
+          <div class="clip-menu-wrap">
+            <button class="clip-menu-button" id="clip-menu-button" type="button" aria-label="Clip options" aria-expanded="false">⋯</button>
+            <div class="clip-menu" id="clip-menu" hidden>
+              <button class="delete-clip-button" id="delete-clip-button" type="button">Delete clip</button>
+            </div>
+          </div>
+          <button class="player-close" type="button" data-close-player aria-label="Close player">×</button>
+        </div>
       </div>
       <video id="main-player" controls playsinline></video>
     </section>
@@ -48,15 +70,68 @@
     const playerModal = document.querySelector("#player-modal");
     const mainPlayer = document.querySelector("#main-player");
     const playerTitle = document.querySelector("#player-title");
-    function openVideo(url, title) {
+    const titleModal = document.querySelector("#title-modal");
+    const titleInput = document.querySelector("#clip-title-input");
+    const saveTitleButton = document.querySelector("#save-title");
+    const cancelTitleButton = document.querySelector("#cancel-title");
+    const clipMenuButton = document.querySelector("#clip-menu-button");
+    const clipMenu = document.querySelector("#clip-menu");
+    const deleteClipButton = document.querySelector("#delete-clip-button");
+    let pendingFile = null;
+    let activeClipPath = null;
+    let activeClipTitle = "";
+    let currentUserId = null;
+    function openVideo(url, title, path) {
+      activeClipPath = path; activeClipTitle = title;
       playerTitle.textContent = title; mainPlayer.src = url;
       playerModal.hidden = false; document.body.classList.add("player-open");
       mainPlayer.play().catch(() => {});
     }
     function closeVideo() {
       mainPlayer.pause(); mainPlayer.removeAttribute("src"); mainPlayer.load();
-      playerModal.hidden = true; document.body.classList.remove("player-open");
+      playerModal.hidden = true; clipMenu.hidden = true; clipMenuButton.setAttribute("aria-expanded", "false"); document.body.classList.remove("player-open");
     }
+    function closeTitleDialog() {
+      titleModal.hidden = true;
+      pendingFile = null;
+      titleInput.value = "";
+      fileInput.value = "";
+    }
+    function showTitleDialog(file) {
+      pendingFile = file;
+      const baseName = file.name.replace(/\\.[^.]+$/, "").replace(/[_-]+/g, " ").trim();
+      titleInput.value = baseName.slice(0, 80);
+      titleModal.hidden = false;
+      titleInput.focus();
+      titleInput.select();
+    }
+    cancelTitleButton.addEventListener("click", closeTitleDialog);
+    titleModal.querySelectorAll("[data-cancel-title]").forEach(el => el.addEventListener("click", closeTitleDialog));
+    clipMenuButton.addEventListener("click", () => {
+      clipMenu.hidden = !clipMenu.hidden;
+      clipMenuButton.setAttribute("aria-expanded", String(!clipMenu.hidden));
+    });
+    deleteClipButton.addEventListener("click", async () => {
+      if (!activeClipPath || !currentUserId) return;
+      clipMenu.hidden = true;
+      clipMenuButton.setAttribute("aria-expanded", "false");
+      const confirmed = window.confirm('Are you sure you want to delete the clip "' + activeClipTitle + '"? This cannot be undone.');
+      if (!confirmed) return;
+      deleteClipButton.disabled = true;
+      try {
+        const { error: deleteError } = await supabase.storage.from(BUCKET).remove([activeClipPath]);
+        if (deleteError) throw deleteError;
+        closeVideo();
+        message.textContent = 'Deleted "' + activeClipTitle + '".';
+        activeClipPath = null;
+        activeClipTitle = "";
+        await loadVideos(currentUserId);
+      } catch (error) {
+        message.textContent = error.message || "The clip could not be deleted.";
+      } finally {
+        deleteClipButton.disabled = false;
+      }
+    });
     playerModal.querySelectorAll("[data-close-player]").forEach(el => el.addEventListener("click", closeVideo));
     document.addEventListener("keydown", event => { if (event.key === "Escape" && !playerModal.hidden) closeVideo(); });
 
@@ -67,6 +142,7 @@
       supabase.auth.onAuthStateChange((_event, nextSession) => {
         if (!nextSession) window.location.replace("login.html");
       });
+      currentUserId = session.user.id;
       await loadVideos(session.user.id);
     }
 
@@ -89,13 +165,29 @@
         return;
       }
 
+      showTitleDialog(file);
+    });
+
+    saveTitleButton.addEventListener("click", async () => {
+      const file = pendingFile;
+      const title = titleInput.value.trim();
+      if (!file) return;
+      if (!title) {
+        message.textContent = "Please enter a title for your clip.";
+        titleInput.focus();
+        return;
+      }
+
+      titleModal.hidden = true;
       chooseButton.disabled = true;
+      saveTitleButton.disabled = true;
       chooseButton.textContent = "…";
-      message.textContent = "Uploading your video…";
+      message.textContent = "Uploading your clip…";
 
       try {
-        const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
-        const objectPath = `${session.user.id}/${crypto.randomUUID()}-${safeName}`;
+        const extension = file.name.includes(".") ? file.name.split(".").pop().toLowerCase() : "mp4";
+        const safeTitle = title.replace(/[^a-zA-Z0-9._-]+/g, "_").replace(/^_+|_+$/g, "").slice(0, 70) || "clip";
+        const objectPath = `${currentUserId}/${crypto.randomUUID()}-${safeTitle}.${extension}`;
         const { error: uploadError } = await supabase.storage
           .from(BUCKET)
           .upload(objectPath, file, {
@@ -105,13 +197,16 @@
           });
 
         if (uploadError) throw uploadError;
-        message.textContent = "Video uploaded successfully.";
-        await loadVideos(session.user.id);
+        message.textContent = 'Saved "' + title + '" successfully.';
+        await loadVideos(currentUserId);
       } catch (error) {
         message.textContent = error.message || "The video could not be uploaded. Please try again.";
       } finally {
         chooseButton.disabled = false;
+        saveTitleButton.disabled = false;
         chooseButton.textContent = "+";
+        pendingFile = null;
+        titleInput.value = "";
         fileInput.value = "";
       }
     });
@@ -150,10 +245,10 @@
         const playMark = document.createElement("span"); playMark.className = "tile-play-mark";
         playMark.setAttribute("aria-hidden", "true"); playMark.textContent = "▶";
         const meta = document.createElement("span"); meta.className = "video-tile-meta";
-        const name = document.createElement("strong"); name.className = "video-name"; name.textContent = file.name.replace(/^[0-9a-f-]+-/i, "");
+        const name = document.createElement("strong"); name.className = "video-name"; name.textContent = file.name.replace(/^[0-9a-f-]+-/i, "").replace(/\\.[^.]+$/, "").replace(/_/g, " ");
         const date = document.createElement("small"); date.textContent = file.created_at ? new Date(file.created_at).toLocaleDateString() : "Uploaded clip";
         meta.append(name, date); tile.append(poster, playMark, meta);
-        if (!urlError && signed?.signedUrl) tile.addEventListener("click", () => openVideo(signed.signedUrl, name.textContent));
+        if (!urlError && signed?.signedUrl) tile.addEventListener("click", () => openVideo(signed.signedUrl, name.textContent, path));
         videoList.append(tile);
       }
     }
