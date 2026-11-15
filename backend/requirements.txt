@@ -1,0 +1,9 @@
+ultralytics
+opencv-python-headless
+easyocr
+supabase
+google-genai
+librosa
+tensorflow-hub
+numpy
+python-dotenv
