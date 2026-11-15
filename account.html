@@ -4,7 +4,14 @@
 <body><main class="auth-card">
   <p><a href="index.html">← Home</a></p><h1>Your account</h1>
   <dl class="account-details"><dt>Name</dt><dd id="display-name">Loading…</dd><dt>Email</dt><dd id="email-address">Loading…</dd><dt>Password</dt><dd>•••••••• <span class="muted">(hidden for security)</span></dd></dl>
-  <form id="password-form"><h2>Change password</h2><label for="new-password">New password</label><input id="new-password" name="password" type="password" minlength="8" autocomplete="new-password" required><button type="submit">Update password</button></form>
+  <section class="support-card" aria-labelledby="support-heading">
+    <h2 id="support-heading">Customer support</h2>
+    <p>Need help with HuntSense? Text our support team:</p>
+    <p class="support-phone"><a href="sms:4062022809">406-202-2809</a></p>
+    <p><strong>Texts only — we do not answer phone calls.</strong></p>
+    <p>Our response time is up to 24 hours.</p>
+    <p>When you text us, please include the email address on your HuntSense account so we can help you.</p>
+  </section>
   <p id="message" class="message" role="status"></p><button id="signout" class="secondary" type="button">Log out</button>
 </main>
 <script type="module">
@@ -16,13 +23,6 @@
     document.getElementById("display-name").textContent = session.user.user_metadata?.display_name || "Not set";
     document.getElementById("email-address").textContent = session.user.email || "Not available";
   }
-  document.getElementById("password-form").addEventListener("submit", async (event) => {
-    event.preventDefault();
-    const password = new FormData(event.currentTarget).get("password");
-    const { error } = await supabase.auth.updateUser({ password });
-    message.textContent = error ? error.message : "Password updated.";
-    if (!error) event.currentTarget.reset();
-  });
   document.getElementById("signout").addEventListener("click", async () => {
     const { error } = await supabase.auth.signOut();
     if (error) message.textContent = error.message;
