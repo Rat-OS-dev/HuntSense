@@ -12,3 +12,7 @@ services:
         value: https://rtyzudbbwoulrysvypql.supabase.co
       - key: SUPABASE_SERVICE_ROLE_KEY
         sync: false
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: YOLO_MODEL_STORAGE_PATH
+        sync: false
