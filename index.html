@@ -10,6 +10,13 @@
     .badge-pending{background:rgba(213,173,112,.22);border:1px solid rgba(213,173,112,.5);color:#f0c987}
     .badge-ready{background:rgba(131,167,123,.24);border:1px solid rgba(131,167,123,.5);color:#b8e3ae}
     #admin-nav-link[hidden]{display:none!important}
+    .video-pagination{display:flex;align-items:center;justify-content:center;gap:14px;margin:24px 0 0}
+    .video-pagination[hidden]{display:none!important}
+    .video-page-button{padding:9px 15px;border:1px solid rgba(213,173,112,.28);border-radius:10px;background:rgba(213,173,112,.08);color:#ead8b8;font:inherit;cursor:pointer}
+    .video-page-button:disabled{opacity:.35;cursor:not-allowed}
+    .video-page-label{color:var(--muted);font-size:.82rem;font-variant-numeric:tabular-nums}
+    @media(max-width:900px){.video-list{grid-template-columns:repeat(2,minmax(0,1fr))}}
+    @media(max-width:520px){.video-list{grid-template-columns:1fr}}
   </style>
 </head>
 <body class="app-page">
@@ -30,34 +37,38 @@
           <div class="section-heading">
             <div>
               <h1>My videos</h1>
-              <p>Upload your Hunt: Showdown matches. Click any match to inspect YOLO fight timestamps, reaction speed, and weapon accuracy.</p>
+              <p>Your saved recordings, organized into a simple video library. Select a tile to open it.</p>
             </div>
-            <button id="add-video-btn" class="add-video-button" type="button" title="Upload match video">+</button>
-            <input id="video-file-input" type="file" accept="video/mp4,video/webm,video/quicktime" hidden />
+            <button id="add-video-btn" class="add-video-button" type="button" title="Upload video" aria-label="Add video">+</button>
+            <input id="video-file-input" type="file" accept="video/mp4,video/webm,video/quicktime,.mp4,.webm,.mov" hidden />
           </div>
 
-          <p class="upload-note">MP4, WebM, or MOV · Queued as Pending until Admin turns the GPU Scanner ON</p>
-          <p id="status-msg" class="message"></p>
+          <p class="upload-note">MP4, WebM, or MOV · Your uploads are saved to your account</p>
+          <p id="status-msg" class="message" role="status" aria-live="polite"></p>
 
           <div id="video-list" class="video-list">
-            <div class="empty-videos">Loading your matches…</div>
+            <div class="empty-videos">Loading your videos…</div>
+          </div>
+          <div id="video-pagination" class="video-pagination" hidden>
+            <button id="previous-page" class="video-page-button" type="button">Previous</button>
+            <span id="video-page-label" class="video-page-label"></span>
+            <button id="next-page" class="video-page-button" type="button">Next</button>
           </div>
         </section>
       </div>
     </main>
   </div>
 
-  <!-- Clip Naming Modal -->
   <div id="title-modal" class="title-modal" hidden>
     <div class="player-backdrop"></div>
-    <div class="title-panel">
-      <h2>Name your match</h2>
-      <p>Give this gameplay recording a title before adding it to your HuntSense queue.</p>
-      <label for="clip-title-input">Match title</label>
-      <input id="clip-title-input" type="text" placeholder="e.g. Bounty Clash - Lawson Station" />
+    <div class="title-panel" role="dialog" aria-modal="true" aria-labelledby="title-modal-heading">
+      <h2 id="title-modal-heading">Name your video</h2>
+      <p>Choose a name so you can find this recording in your library.</p>
+      <label for="clip-title-input">Video name</label>
+      <input id="clip-title-input" type="text" maxlength="100" placeholder="e.g. Evening match" autocomplete="off" />
       <div class="title-actions">
         <button id="cancel-title-btn" class="secondary" type="button">Cancel</button>
-        <button id="save-title-btn" type="button">Save match</button>
+        <button id="save-title-btn" type="button">Save video</button>
       </div>
     </div>
   </div>
@@ -73,13 +84,20 @@
     const saveTitleBtn = document.getElementById("save-title-btn");
     const statusMsg = document.getElementById("status-msg");
     const videoList = document.getElementById("video-list");
+    const pagination = document.getElementById("video-pagination");
+    const previousPageBtn = document.getElementById("previous-page");
+    const nextPageBtn = document.getElementById("next-page");
+    const pageLabel = document.getElementById("video-page-label");
 
+    const PAGE_SIZE = 8;
     let pendingFile = null;
     let currentUser = null;
+    let allMatches = [];
+    let currentPage = 0;
 
     async function init() {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
+      const { data: { user }, error } = await supabase.auth.getUser();
+      if (error || !user) {
         window.location.href = "login.html";
         return;
       }
@@ -87,97 +105,205 @@
       const adminLink = document.getElementById("admin-nav-link");
       const isAdmin = user.email?.trim().toLowerCase() === "ryan@ratys.com" && Boolean(user.email_confirmed_at);
 
-      if (isAdmin) {
-        adminLink.hidden = false;
-      } else {
-        adminLink.remove();
-      }
-      loadMatches();
+      if (isAdmin) adminLink.hidden = false;
+      else adminLink.remove();
+
+      await loadMatches();
     }
 
     async function loadMatches() {
+      videoList.replaceChildren();
+      const loading = document.createElement("div");
+      loading.className = "empty-videos";
+      loading.textContent = "Loading your videos…";
+      videoList.append(loading);
+
       const { data: matches, error } = await supabase
         .from("match_analyses")
-        .select("*")
+        .select("id, video_title, status, created_at, timestamps, avg_reaction_ms")
         .eq("user_id", currentUser.id)
         .order("created_at", { ascending: false });
 
       if (error) {
-        videoList.innerHTML = `<div class="empty-videos">Error loading matches: ${error.message}</div>`;
+        showEmpty("Could not load videos: " + error.message);
         return;
       }
 
-      if (!matches || matches.length === 0) {
-        videoList.innerHTML = `<div class="empty-videos">No matches uploaded yet. Click the <strong>+</strong> button above to upload your first Hunt: Showdown recording.</div>`;
-        return;
-      }
-
-      videoList.innerHTML = matches.map(m => {
-        const isReady = m.status === "ready";
-        const subText = isReady
-          ? `${(m.timestamps || []).length} fights · ${m.avg_reaction_ms ? m.avg_reaction_ms + " ms avg" : "Analyzed"}`
-          : "Pending Admin GPU Scan";
-        return `
-          <button class="video-tile" type="button" onclick="window.location.href='match.html?id=${m.id}'">
-            <div class="video-tile-preview"></div>
-            <span class="tile-badge ${isReady ? "badge-ready" : "badge-pending"}">${m.status}</span>
-            <span class="tile-play-mark">▶</span>
-            <div class="video-tile-meta">
-              <p class="video-name">${m.video_title}</p>
-              <small>${subText}</small>
-            </div>
-          </button>
-        `;
-      }).join("");
+      allMatches = matches || [];
+      currentPage = Math.min(currentPage, Math.max(0, Math.ceil(allMatches.length / PAGE_SIZE) - 1));
+      renderMatches();
     }
 
-    addBtn.onclick = () => fileInput.click();
+    function showEmpty(message) {
+      videoList.replaceChildren();
+      const empty = document.createElement("div");
+      empty.className = "empty-videos";
+      empty.textContent = message;
+      videoList.append(empty);
+      pagination.hidden = true;
+    }
 
-    fileInput.onchange = () => {
-      if (fileInput.files && fileInput.files) {
-        pendingFile = fileInput.files;
-        titleInput.value = pendingFile.name.replace(/\.[^/.]+$/, "");
-        titleModal.hidden = false;
-        titleInput.focus();
+    function renderMatches() {
+      videoList.replaceChildren();
+
+      if (allMatches.length === 0) {
+        showEmpty("No videos saved yet. Select + to choose a video, give it a name, and save it here.");
+        return;
       }
-    };
 
-    cancelTitleBtn.onclick = () => {
+      const start = currentPage * PAGE_SIZE;
+      const visibleMatches = allMatches.slice(start, start + PAGE_SIZE);
+
+      visibleMatches.forEach((match) => {
+        const tile = document.createElement("button");
+        tile.className = "video-tile";
+        tile.type = "button";
+        tile.addEventListener("click", () => {
+          window.location.href = "match.html?id=" + encodeURIComponent(match.id);
+        });
+
+        const preview = document.createElement("span");
+        preview.className = "video-tile-preview";
+
+        const badge = document.createElement("span");
+        const isReady = match.status === "ready";
+        badge.className = "tile-badge " + (isReady ? "badge-ready" : "badge-pending");
+        badge.textContent = match.status || "saved";
+
+        const play = document.createElement("span");
+        play.className = "tile-play-mark";
+        play.textContent = "▶";
+        play.setAttribute("aria-hidden", "true");
+
+        const meta = document.createElement("span");
+        meta.className = "video-tile-meta";
+
+        const name = document.createElement("span");
+        name.className = "video-name";
+        name.textContent = match.video_title || "Untitled video";
+
+        const detail = document.createElement("small");
+        detail.textContent = isReady
+          ? ((match.timestamps || []).length + " saved markers")
+          : "Saved video";
+
+        meta.append(name, detail);
+        tile.append(preview, badge, play, meta);
+        videoList.append(tile);
+      });
+
+      const pageCount = Math.ceil(allMatches.length / PAGE_SIZE);
+      pagination.hidden = pageCount <= 1;
+      pageLabel.textContent = "Page " + (currentPage + 1) + " of " + pageCount;
+      previousPageBtn.disabled = currentPage === 0;
+      nextPageBtn.disabled = currentPage >= pageCount - 1;
+    }
+
+    addBtn.addEventListener("click", () => {
+      fileInput.value = "";
+      fileInput.click();
+    });
+
+    fileInput.addEventListener("change", () => {
+      const selectedFile = fileInput.files && fileInput.files[0];
+      if (!selectedFile) return;
+
+      const allowedTypes = ["video/mp4", "video/webm", "video/quicktime"];
+      const allowedExtensions = /\.(mp4|webm|mov)$/i;
+      if (!(allowedTypes.includes(selectedFile.type) || allowedExtensions.test(selectedFile.name))) {
+        statusMsg.textContent = "Please choose an MP4, WebM, or MOV video.";
+        fileInput.value = "";
+        return;
+      }
+
+      pendingFile = selectedFile;
+      titleInput.value = selectedFile.name.replace(/\.[^/.]+$/, "");
+      titleModal.hidden = false;
+      titleInput.focus();
+      titleInput.select();
+    });
+
+    function closeTitleModal() {
       pendingFile = null;
       fileInput.value = "";
       titleModal.hidden = true;
-    };
+      saveTitleBtn.disabled = false;
+    }
 
-    saveTitleBtn.onclick = async () => {
-      if (!pendingFile || !currentUser) return;
-      const title = titleInput.value.trim() || "Untitled Match";
+    cancelTitleBtn.addEventListener("click", closeTitleModal);
+
+    saveTitleBtn.addEventListener("click", async () => {
+      if (!pendingFile || !currentUser || saveTitleBtn.disabled) return;
+
+      const title = titleInput.value.trim();
+      if (!title) {
+        titleInput.focus();
+        statusMsg.textContent = "Enter a name for this video before saving.";
+        return;
+      }
+
+      const fileToUpload = pendingFile;
+      const extension = fileToUpload.name.split(".").pop().toLowerCase();
+      const storagePath = currentUser.id + "/" + crypto.randomUUID() + "." + extension;
+
       saveTitleBtn.disabled = true;
-      statusMsg.textContent = "Uploading match video to HuntSense...";
-      titleModal.hidden = true;
+      statusMsg.textContent = "Uploading your video…";
 
-      const fileExt = pendingFile.name.split(".").pop();
-      const storagePath = `${currentUser.id}/${Date.now()}.${fileExt}`;
+      const { error: uploadError } = await supabase.storage
+        .from("videos")
+        .upload(storagePath, fileToUpload, {
+          contentType: fileToUpload.type || "video/" + extension,
+          upsert: false
+        });
 
-      const { error: upErr } = await supabase.storage.from("videos").upload(storagePath, pendingFile);
-      if (upErr) {
-        statusMsg.textContent = `Upload failed: ${upErr.message}`;
+      if (uploadError) {
+        statusMsg.textContent = "Upload failed: " + uploadError.message;
         saveTitleBtn.disabled = false;
         return;
       }
 
-      const { error: dbErr } = await supabase.from("match_analyses").insert({
+      const { error: insertError } = await supabase.from("match_analyses").insert({
         user_id: currentUser.id,
         video_path: storagePath,
         video_title: title,
         status: "pending"
       });
 
-      statusMsg.textContent = dbErr ? `Database error: ${dbErr.message}` : "Match uploaded! Status set to Pending.";
-      saveTitleBtn.disabled = false;
+      if (insertError) {
+        await supabase.storage.from("videos").remove([storagePath]);
+        statusMsg.textContent = "Video uploaded, but its library record could not be saved: " + insertError.message;
+        saveTitleBtn.disabled = false;
+        return;
+      }
+
+      titleModal.hidden = true;
       pendingFile = null;
       fileInput.value = "";
-      loadMatches();
-    };
+      titleInput.value = "";
+      saveTitleBtn.disabled = false;
+      currentPage = 0;
+      statusMsg.textContent = "“" + title + "” was added to My Videos.";
+      await loadMatches();
+    });
+
+    previousPageBtn.addEventListener("click", () => {
+      if (currentPage > 0) {
+        currentPage -= 1;
+        renderMatches();
+      }
+    });
+
+    nextPageBtn.addEventListener("click", () => {
+      if ((currentPage + 1) * PAGE_SIZE < allMatches.length) {
+        currentPage += 1;
+        renderMatches();
+      }
+    });
+
+    titleInput.addEventListener("keydown", (event) => {
+      if (event.key === "Enter") saveTitleBtn.click();
+      if (event.key === "Escape") closeTitleModal();
+    });
 
     init();
   </script>
