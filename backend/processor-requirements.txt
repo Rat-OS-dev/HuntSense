@@ -5,5 +5,3 @@ pytesseract
 requests
 ultralytics
 google-genai
-easyocr
-numpy
