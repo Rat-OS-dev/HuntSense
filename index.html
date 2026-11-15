@@ -9,6 +9,7 @@
     .tile-badge{position:absolute;top:10px;right:10px;padding:4px 9px;border-radius:999px;font-size:.66rem;font-weight:800;letter-spacing:.08em;text-transform:uppercase;backdrop-filter:blur(8px)}
     .badge-pending{background:rgba(213,173,112,.22);border:1px solid rgba(213,173,112,.5);color:#f0c987}
     .badge-ready{background:rgba(131,167,123,.24);border:1px solid rgba(131,167,123,.5);color:#b8e3ae}
+    #admin-nav-link[hidden]{display:none!important}
   </style>
 </head>
 <body class="app-page">
@@ -83,8 +84,13 @@
         return;
       }
       currentUser = user;
-      if (user.email?.trim().toLowerCase() === "ryan@ratys.com" && user.email_confirmed_at) {
-        document.getElementById("admin-nav-link").hidden = false;
+      const adminLink = document.getElementById("admin-nav-link");
+      const isAdmin = user.email?.trim().toLowerCase() === "ryan@ratys.com" && Boolean(user.email_confirmed_at);
+
+      if (isAdmin) {
+        adminLink.hidden = false;
+      } else {
+        adminLink.remove();
       }
       loadMatches();
     }
