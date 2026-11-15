@@ -3,13 +3,15 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#0c0e0d">
   <title>Analysis · HuntSense</title>
   <link rel="stylesheet" href="styles.css">
 </head>
-<body class="app-page">
-  <div class="app-shell">
-    <aside class="app-sidebar" aria-label="Main navigation">
+<body class="app-page analysis-page">
+  <div class="app-shell analysis-shell">
+    <aside class="app-sidebar analysis-sidebar" aria-label="Main navigation">
       <a class="sidebar-brand" href="index.html">HuntSense</a>
+      <p class="analysis-nav-caption">WORKSPACE</p>
       <nav class="sidebar-nav">
         <a class="sidebar-link" href="index.html"><span class="nav-dot"></span>My Videos</a>
         <a class="sidebar-link is-active" href="analysis.html" aria-current="page"><span class="nav-dot"></span>Analysis</a>
@@ -18,14 +20,64 @@
     </aside>
 
     <main class="app-main analysis-main">
-      <div class="analysis-heading">
-        <div>
-          <p class="eyebrow">HUNTSENSE</p>
-          <h1>Analysis</h1>
-          <p class="analysis-subtitle">Your gameplay insights will live here.</p>
+      <header class="analysis-topline">
+        <div class="analysis-breadcrumb"><span>HUNTSENSE</span><span class="breadcrumb-slash">/</span> ANALYSIS</div>
+        <span class="workspace-status"><span class="status-indicator"></span> WORKSPACE</span>
+      </header>
+
+      <section class="analysis-hero" aria-labelledby="analysis-title">
+        <div class="analysis-hero-copy">
+          <p class="analysis-eyebrow">THE FIELD REPORT</p>
+          <h1 id="analysis-title">Make every<br><span>hunt count.</span></h1>
+          <p class="analysis-intro">A clearer view of how you play starts with your match footage. Your clips are the first step toward better decisions in the bayou.</p>
+          <a class="analysis-primary-link" href="index.html">Go to my videos <span aria-hidden="true">↗</span></a>
         </div>
-        <a class="outline-link" href="index.html">My Videos <span aria-hidden="true">→</span></a>
-      </div>
+        <div class="analysis-hero-art" aria-hidden="true">
+          <div class="radar-ring radar-ring-one"></div>
+          <div class="radar-ring radar-ring-two"></div>
+          <div class="radar-crosshair"></div>
+          <div class="radar-center"><span>HS</span></div>
+          <span class="radar-coordinate radar-coordinate-top">31° 02' N</span>
+          <span class="radar-coordinate radar-coordinate-bottom">FIELD / 01</span>
+          <span class="radar-sweep"></span>
+        </div>
+        <div class="hero-index"><span>01</span><span class="hero-index-line"></span><span>YOUR ANALYSIS SPACE</span></div>
+      </section>
+
+      <section class="analysis-start" aria-labelledby="start-title">
+        <div class="analysis-section-heading">
+          <div>
+            <p class="analysis-eyebrow">START HERE</p>
+            <h2 id="start-title">Your review begins with a clip.</h2>
+          </div>
+          <span class="section-number">01 — 03</span>
+        </div>
+        <div class="analysis-steps">
+          <article class="analysis-step">
+            <span class="step-number">01</span>
+            <div class="step-mark step-mark-upload" aria-hidden="true"><span>↑</span></div>
+            <h3>Upload a match</h3>
+            <p>Add a gameplay recording to your private video library.</p>
+          </article>
+          <article class="analysis-step">
+            <span class="step-number">02</span>
+            <div class="step-mark step-mark-review" aria-hidden="true"><span>⌕</span></div>
+            <h3>Choose a moment</h3>
+            <p>Keep the key encounters and decisions you want to understand.</p>
+          </article>
+          <article class="analysis-step">
+            <span class="step-number">03</span>
+            <div class="step-mark step-mark-insight" aria-hidden="true"><span>↗</span></div>
+            <h3>Build your insights</h3>
+            <p>Match analysis tools will appear here as they become available.</p>
+          </article>
+        </div>
+      </section>
+
+      <footer class="analysis-footer analysis-footer-new">
+        <span>HUNTSENSE</span>
+        <span>YOUR FOOTAGE. YOUR PROGRESS.</span>
+      </footer>
     </main>
   </div>
 
