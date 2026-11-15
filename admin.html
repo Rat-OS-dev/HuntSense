@@ -1,0 +1,183 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex,nofollow">
+  <title>HuntSense · Admin</title>
+  <link rel="stylesheet" href="styles.css">
+  <style>
+    .admin-wrap{width:min(100% - 36px,1180px);margin:0 auto;padding:42px 0 80px}
+    .admin-head{display:flex;justify-content:space-between;align-items:center;gap:18px;margin-bottom:26px}
+    .admin-head h1{margin:0 0 8px;font-size:clamp(1.8rem,4vw,2.5rem);letter-spacing:-.04em}
+    .admin-head p{margin:0;color:var(--muted)}
+    .admin-search{width:100%;max-width:560px;margin:12px 0 18px}
+    .admin-search input,.edit-input{width:100%;padding:13px 15px;border:1px solid var(--line);border-radius:12px;background:#171b17;color:#f4f0e8;font:inherit;outline:none}
+    .admin-search input:focus,.edit-input:focus{border-color:var(--gold)}
+    .admin-table-wrap{overflow-x:auto;border:1px solid var(--line);border-radius:16px;background:rgba(255,255,255,.018)}
+    .admin-table{width:100%;border-collapse:collapse;min-width:650px}
+    .admin-table th{text-align:left;padding:15px 18px;color:var(--gold-bright);font-size:.78rem;letter-spacing:.08em;text-transform:uppercase;background:rgba(213,173,112,.06)}
+    .admin-table td{padding:16px 18px;border-top:1px solid rgba(255,255,255,.06);overflow-wrap:anywhere}
+    .admin-cell{cursor:default;border-radius:7px;transition:background .15s,outline-color .15s}
+    .admin-cell.selected{background:rgba(213,173,112,.10);outline:1px solid rgba(213,173,112,.3)}
+    .admin-cell.editable{cursor:pointer}.admin-cell.editable:hover{background:rgba(213,173,112,.07)}
+    .admin-hint,.admin-status{color:var(--muted);font-size:.86rem;line-height:1.55}
+    .admin-status{min-height:1.5em;color:var(--gold-bright)}
+    .admin-modal[hidden]{display:none}.admin-modal{position:fixed;inset:0;z-index:50;display:grid;place-items:center;padding:20px}
+    .admin-modal-backdrop{position:absolute;inset:0;background:rgba(0,0,0,.82);backdrop-filter:blur(9px)}
+    .admin-dialog{position:relative;width:min(100%,460px);padding:25px;border:1px solid rgba(213,173,112,.28);border-radius:18px;background:#171b17;box-shadow:0 25px 90px #0009}
+    .admin-dialog h2{margin:0 0 8px}.admin-dialog p{color:var(--muted);line-height:1.5}
+    .admin-dialog label{display:block;margin:18px 0 8px;font-size:.88rem;color:#e8dcc8}
+    .admin-actions{display:flex;justify-content:flex-end;gap:10px;margin-top:22px}
+    .admin-actions button,.admin-head button{padding:11px 16px;border:1px solid var(--line);border-radius:11px;background:#252a23;color:#f4f0e8;font:inherit;cursor:pointer}
+    .admin-actions .confirm-save{background:linear-gradient(145deg,#e5c18a,#b88b4e);color:#17130c;border:0;font-weight:700}
+    .admin-login{max-width:440px;margin:12vh auto;padding:28px;border:1px solid var(--line);border-radius:18px;background:#151815}
+    .admin-login label{display:block;margin:14px 0 7px}.admin-login input{width:100%;padding:12px;border-radius:10px;border:1px solid var(--line);background:#101310;color:#fff}
+    .admin-login button{margin-top:16px;padding:12px 18px;border:0;border-radius:10px;background:var(--gold);color:#17130c;font-weight:700}
+    @media(max-width:650px){.admin-wrap{padding-top:28px}.admin-head{align-items:flex-start;flex-direction:column}.admin-table th,.admin-table td{padding:13px 12px}}
+  </style>
+</head>
+<body>
+  <header class="topbar"><a class="account-link" href="index.html">Back to HuntSense</a></header>
+  <main class="admin-wrap">
+    <section id="admin-login" class="admin-login" hidden>
+      <h1>HuntSense Admin</h1><p>Sign in with your existing HuntSense account to continue.</p>
+      <form id="admin-login-form">
+        <label for="admin-email">Email</label><input id="admin-email" type="email" autocomplete="username" required>
+        <label for="admin-password">Password</label><input id="admin-password" type="password" autocomplete="current-password" required>
+        <button type="submit">Sign in</button>
+      </form><p id="login-status" class="admin-status" role="status"></p>
+    </section>
+    <section id="admin-app" hidden>
+      <div class="admin-head"><div><h1>Account manager</h1><p>Search accounts and carefully edit account details.</p></div><button id="admin-signout" type="button">Sign out</button></div>
+      <div class="admin-search"><input id="account-search" type="search" placeholder="Search by email or name…" autocomplete="off" aria-label="Search accounts"></div>
+      <p class="admin-hint">Single-click a cell to select it. Double-click to open the editor. Changes are not saved until you press Confirm.</p>
+      <p id="admin-status" class="admin-status" role="status" aria-live="polite"></p>
+      <div class="admin-table-wrap">
+        <table class="admin-table">
+          <thead><tr><th>Email</th><th>Password</th><th>Name</th></tr></thead>
+          <tbody id="account-rows"><tr><td colspan="3">Loading accounts…</td></tr></tbody>
+        </table>
+      </div>
+      <p class="admin-hint">For security, existing passwords are never shown or searchable. The Password column lets you set a new password.</p>
+    </section>
+  </main>
+  <div id="edit-modal" class="admin-modal" hidden role="dialog" aria-modal="true" aria-labelledby="edit-heading">
+    <div class="admin-modal-backdrop" data-cancel></div>
+    <section class="admin-dialog">
+      <h2 id="edit-heading">Edit account</h2><p id="edit-description">Review the change before confirming.</p>
+      <label id="edit-label" for="edit-value">New value</label>
+      <input id="edit-value" class="edit-input" type="text" autocomplete="off">
+      <div class="admin-actions"><button type="button" id="edit-cancel">Cancel</button><button type="button" id="edit-confirm" class="confirm-save">Confirm</button></div>
+    </section>
+  </div>
+  <script type="module">
+    import { supabase } from "./supabase.js";
+    const loginPanel = document.getElementById("admin-login");
+    const appPanel = document.getElementById("admin-app");
+    const rows = document.getElementById("account-rows");
+    const search = document.getElementById("account-search");
+    const status = document.getElementById("admin-status");
+    const modal = document.getElementById("edit-modal");
+    const editValue = document.getElementById("edit-value");
+    let accounts = [];
+    let editing = null;
+
+    async function invokeAdmin(action, payload = {}) {
+      const { data, error } = await supabase.functions.invoke("huntsense-admin", { body: { action, ...payload } });
+      if (error) throw new Error(error.message || "Admin request failed.");
+      if (data?.error) throw new Error(data.error);
+      return data;
+    }
+    function escapeHtml(value) {
+      return String(value ?? "").replace(/[&<>"']/g, char => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" })[char]);
+    }
+    function renderRows() {
+      const term = search.value.trim().toLowerCase();
+      const matches = accounts.filter(user => (user.email || "").toLowerCase().includes(term) || (user.name || "").toLowerCase().includes(term));
+      if (!matches.length) {
+        rows.innerHTML = '<tr><td colspan="3">No matching accounts.</td></tr>';
+        return;
+      }
+      rows.innerHTML = matches.map(user => `
+        <tr data-user-id="${escapeHtml(user.id)}">
+          <td class="admin-cell editable" data-field="email">${escapeHtml(user.email || "")}</td>
+          <td class="admin-cell editable" data-field="password">Double-click to set new password</td>
+          <td class="admin-cell editable" data-field="name">${escapeHtml(user.name || "—")}</td>
+        </tr>`).join("");
+      rows.querySelectorAll(".admin-cell").forEach(cell => {
+        cell.addEventListener("click", () => {
+          rows.querySelectorAll(".admin-cell.selected").forEach(item => item.classList.remove("selected"));
+          cell.classList.add("selected");
+        });
+        cell.addEventListener("dblclick", () => openEditor(cell.closest("tr").dataset.userId, cell.dataset.field));
+      });
+    }
+    function openEditor(userId, field) {
+      const user = accounts.find(item => item.id === userId);
+      if (!user) return;
+      editing = { userId, field };
+      const labels = { email: "Email address", password: "New password", name: "Name" };
+      document.getElementById("edit-heading").textContent = "Change " + labels[field];
+      document.getElementById("edit-description").textContent = "Confirm the account and new value before saving. Nothing changes until you click Confirm.";
+      document.getElementById("edit-label").textContent = field === "password" ? "New password (at least 8 characters)" : "New " + labels[field].toLowerCase();
+      editValue.type = field === "password" ? "password" : field === "email" ? "email" : "text";
+      editValue.value = field === "email" ? user.email || "" : field === "name" ? user.name || "" : "";
+      editValue.placeholder = field === "password" ? "Enter a new password" : "";
+      modal.hidden = false;
+      editValue.focus();
+      editValue.select();
+    }
+    function closeEditor() { modal.hidden = true; editing = null; editValue.value = ""; }
+    async function loadAccounts() {
+      status.textContent = "Loading accounts…";
+      try {
+        const result = await invokeAdmin("list");
+        accounts = result.users || [];
+        renderRows();
+        status.textContent = accounts.length + " account(s) loaded.";
+      } catch (error) {
+        status.textContent = error.message + " Admin access must be configured on the secure server.";
+        rows.innerHTML = '<tr><td colspan="3">Accounts could not be loaded.</td></tr>';
+      }
+    }
+    document.getElementById("edit-cancel").addEventListener("click", closeEditor);
+    modal.querySelector("[data-cancel]").addEventListener("click", closeEditor);
+    document.getElementById("edit-confirm").addEventListener("click", async () => {
+      if (!editing) return;
+      const value = editValue.value.trim();
+      if (editing.field !== "password" && !value) { alert("Please enter a value."); return; }
+      if (editing.field === "password" && value.length < 8) { alert("Password must be at least 8 characters."); return; }
+      const confirmButton = document.getElementById("edit-confirm");
+      confirmButton.disabled = true;
+      try {
+        await invokeAdmin("update", { user_id: editing.userId, field: editing.field, value });
+        closeEditor();
+        status.textContent = "Account updated successfully.";
+        await loadAccounts();
+      } catch (error) {
+        status.textContent = error.message;
+      } finally { confirmButton.disabled = false; }
+    });
+    search.addEventListener("input", renderRows);
+    document.getElementById("admin-signout").addEventListener("click", async () => { await supabase.auth.signOut(); window.location.reload(); });
+    document.getElementById("admin-login-form").addEventListener("submit", async event => {
+      event.preventDefault();
+      const button = event.currentTarget.querySelector("button");
+      const message = document.getElementById("login-status");
+      button.disabled = true; message.textContent = "Signing in…";
+      const { error } = await supabase.auth.signInWithPassword({ email: document.getElementById("admin-email").value, password: document.getElementById("admin-password").value });
+      button.disabled = false;
+      if (error) { message.textContent = error.message; return; }
+      await showApp();
+    });
+    async function showApp() {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) { loginPanel.hidden = false; appPanel.hidden = true; return; }
+      loginPanel.hidden = true; appPanel.hidden = false;
+      await loadAccounts();
+    }
+    await showApp();
+  </script>
+</body>
+</html>
