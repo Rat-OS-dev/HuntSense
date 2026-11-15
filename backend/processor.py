@@ -107,11 +107,17 @@ def find_rounds(path):
         rounds.append((max(0,start-4),min(duration,end+2)))
     return duration,[(a,b) for a,b in rounds if b-a>=120]
 
-def encode_segment(source,start,end,target):
-    run(["ffmpeg","-hide_banner","-loglevel","error","-y","-ss",str(start),"-i",source,"-t",str(end-start),
-         "-vf","scale='min(1920,iw)':-2:force_original_aspect_ratio=decrease",
-         "-c:v","libx265","-preset","medium","-crf","27","-tag:v","hvc1",
+def compress_source(source,target):
+    run(["ffmpeg","-hide_banner","-loglevel","error","-y","-i",source,
+         "-vf","scale=-2:720","-c:v","libx265","-preset","fast","-crf","28","-tag:v","hvc1",
          "-c:a","aac","-b:a","96k","-movflags","+faststart",target])
+
+def encode_segment(source,start,end,target):
+    # The source has already been compressed once; stream-copy segments to avoid
+    # another expensive full encode for every match.
+    run(["ffmpeg","-hide_banner","-loglevel","error","-y","-ss",str(start),"-i",source,
+         "-t",str(end-start),"-map","0","-c","copy","-avoid_negative_ts","make_zero",
+         "-movflags","+faststart",target])
 
 def detect_fights(path, model_path):
     from ultralytics import YOLO
@@ -186,13 +192,15 @@ def process_job(job):
         if duration>MAX_SECONDS+3:
             raise ValueError("Recording exceeds the 10-hour maximum.")
         supabase.table("video_processing_jobs").update({"duration_seconds":duration}).eq("id",jid).execute()
-        duration,rounds=find_rounds(str(original))
+        compressed=work/"source-compressed.mp4"
+        compress_source(str(original),str(compressed))
+        duration,rounds=find_rounds(str(compressed))
         if not rounds:
             raise ValueError("No round-start screens were confidently detected. Original recording was kept for review.")
         created=[]
         for idx,(start,end) in enumerate(rounds,1):
             out=work/f"match-{idx:02d}.mp4"
-            encode_segment(str(original),start,end,str(out))
+            encode_segment(str(compressed),start,end,str(out))
             storage=f"{uid}/matches/{jid}/match-{idx:02d}.mp4"
             tus_upload(str(out),storage)
             row=supabase.table("match_analyses").insert({
