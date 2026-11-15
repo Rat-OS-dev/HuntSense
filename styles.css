@@ -52,3 +52,11 @@
 .clip-menu select{background:#11150f;color:#f4f0e8;border:1px solid var(--line)}
 .clip-menu .delete-clip-button{color:#f0a29a;background:transparent}
 .player-panel #main-player{max-height:65vh}
+
+/* Account customer support panel */
+.support-card{margin:24px 0;padding:18px;border:1px solid var(--line);border-radius:14px;background:rgba(213,173,112,.06)}
+.support-card h2{margin:0 0 12px}
+.support-card p{line-height:1.55}
+.support-phone{font-size:1.35rem;font-weight:700;margin:8px 0}
+.support-phone a{color:inherit;text-decoration:none}
+.support-phone a:hover{text-decoration:underline}
