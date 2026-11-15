@@ -36,9 +36,9 @@ def download_source(path,target):
                 if chunk: out.write(chunk)
 
 def tus_upload(local_path, object_path, content_type="video/mp4"):
-    endpoint=URL.rstrip("/")+"/storage/v1/upload/resumable"
+    endpoint=URL.replace(".supabase.co",".storage.supabase.co").rstrip("/")+"/storage/v1/upload/resumable"
     headers={"apikey":KEY,"Authorization":"Bearer "+KEY,"Tus-Resumable":"1.0.0",
-             "Upload-Length":str(os.path.getsize(local_path)),
+             "Upload-Length":str(os.path.getsize(local_path)),"x-upsert":"true",
              "Upload-Metadata":",".join(f"{k} {base64.b64encode(v.encode()).decode()}" for k,v in {
                  "bucketName":BUCKET,"objectName":object_path,"contentType":content_type,"cacheControl":"3600"
              }.items())}
@@ -189,12 +189,6 @@ def process_job(job):
         duration,rounds=find_rounds(str(original))
         if not rounds:
             raise ValueError("No round-start screens were confidently detected. Original recording was kept for review.")
-        model_path=os.getenv("YOLO_MODEL_PATH")
-        model_storage_path=os.getenv("YOLO_MODEL_STORAGE_PATH")
-        if (not model_path or not Path(model_path).exists()) and model_storage_path:
-            model_file=work/"huntsense-detector.pt"
-            model_file.write_bytes(supabase.storage.from_(BUCKET).download(model_storage_path))
-            model_path=str(model_file)
         created=[]
         for idx,(start,end) in enumerate(rounds,1):
             out=work/f"match-{idx:02d}.mp4"
