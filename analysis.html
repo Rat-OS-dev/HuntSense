@@ -14,13 +14,19 @@
     select.match-select{width:100%;max-width:440px;padding:12px;border-radius:10px;border:1px solid var(--line);background:#101310;color:#fff;font:inherit}
   </style>
 </head>
-<body>
-  <header class="topbar" style="justify-content:space-between">
-    <a class="account-link" href="index.html">← My Videos</a>
-    <a id="admin-nav-link" class="account-link" href="admin.html" hidden>Admin Control</a>
-  </header>
-
-  <main class="hub-wrap">
+<body class="app-page">
+  <div class="app-shell">
+    <aside class="app-sidebar">
+      <a class="sidebar-brand" href="index.html">HuntSense</a>
+      <nav class="sidebar-nav" aria-label="Main navigation">
+        <a class="sidebar-link" href="index.html"><span class="nav-dot"></span>My Videos</a>
+        <a class="sidebar-link is-active" href="analysis.html" aria-current="page"><span class="nav-dot"></span>Analysis</a>
+        <a id="admin-nav-link" class="sidebar-link" href="admin.html" hidden><span class="nav-dot"></span>Admin</a>
+      </nav>
+      <a class="sidebar-account" href="account.html"><span>Account</span><span>↗</span></a>
+    </aside>
+    <main class="app-main">
+      <div class="hub-wrap">
     <p class="eyebrow">HUNTSENSE · OVERALL ANALYST HUB</p>
     <h1>Monthly & Weekly Breakdown</h1>
     <p style="color:var(--muted)">Macro patterns across all your fights, sound traps, and your selected full-match review.</p>
@@ -67,7 +73,9 @@
       <p style="color:var(--muted);font-size:.86rem;margin:0 0 12px">Average time this month from first seeing an enemy Hunter to noticeably fast mouse movement chopping toward them.</p>
       <div id="monthly-reaction-ms" style="font-size:2.8rem;font-weight:800;color:var(--gold-bright)">— ms</div>
     </section>
-  </main>
+      </div>
+    </main>
+  </div>
 
   <script type="module">
     import { supabase } from "./supabase.js";
