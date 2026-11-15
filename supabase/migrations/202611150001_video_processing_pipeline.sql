@@ -31,3 +31,4 @@ create index if not exists video_fight_clips_match_idx on public.video_fight_cli
 alter table public.video_fight_clips enable row level security;
 drop policy if exists "Users can view their own fight clips" on public.video_fight_clips;
 create policy "Users can view their own fight clips" on public.video_fight_clips for select to authenticated using (auth.uid() = user_id);
+alter table public.video_fight_clips add column if not exists analysis_notes text;
