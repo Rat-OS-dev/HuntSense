@@ -2,6 +2,8 @@ import os, re, time, json, tempfile, subprocess, logging
 from pathlib import Path
 import cv2
 import pytesseract
+import requests
+import base64
 from dotenv import load_dotenv
 from supabase import create_client
 
@@ -111,6 +113,55 @@ def encode_segment(source,start,end,target):
          "-c:v","libx265","-preset","medium","-crf","27","-tag:v","hvc1",
          "-c:a","aac","-b:a","96k","-movflags","+faststart",target])
 
+def detect_fights(path, model_path):
+    from ultralytics import YOLO
+    detector=YOLO(model_path)
+    cap=cv2.VideoCapture(path)
+    fps=cap.get(cv2.CAP_PROP_FPS) or 30
+    duration=probe(path)
+    events=[]
+    sec=0.0
+    while sec<duration:
+        cap.set(cv2.CAP_PROP_POS_MSEC,sec*1000)
+        ok,frame=cap.read()
+        if not ok: break
+        result=detector(frame,verbose=False)[0]
+        names=result.names
+        found=False
+        for box in result.boxes:
+            label=str(names[int(box.cls[0])]).lower().replace(" ","_")
+            if label in ("enemy_hunter","enemy","hunter_enemy") and float(box.conf[0])>=0.70:
+                found=True
+                break
+        if found:
+            if events and sec<=events[-1][1]+10:
+                events[-1]=(events[-1][0],min(duration,sec+50))
+            else:
+                events.append((max(0,sec-20),min(duration,sec+50)))
+        sec+=1.0
+    cap.release()
+    return events
+
+def save_fight_clips(match_id,user_id,match_path,local_path,model_path):
+    events=detect_fights(local_path,model_path)
+    saved=[]
+    temp=Path(local_path).parent
+    for index,(start,end) in enumerate(events,1):
+        clip=temp/f"fight-{match_id}-{index}.mp4"
+        run(["ffmpeg","-hide_banner","-loglevel","error","-y","-ss",str(start),"-i",local_path,
+             "-t",str(max(1,end-start)),"-c:v","libx265","-preset","fast","-crf","28",
+             "-c:a","aac","-b:a","96k","-movflags","+faststart",str(clip)])
+        path=f"{user_id}/fight-clips/{match_id}/{index:03d}.mp4"
+        tus_upload(str(clip),path)
+        supabase.table("video_fight_clips").insert({
+            "match_id":match_id,"user_id":user_id,"storage_path":path,
+            "start_sec":start,"end_sec":end
+        }).execute()
+        saved.append({"start_sec":round(start,1),"end_sec":round(end,1)})
+        clip.unlink(missing_ok=True)
+    supabase.table("match_analyses").update({"timestamps":saved}).eq("id",match_id).execute()
+    return len(saved)
+
 def process_job(job):
     jid=job["id"]; uid=job["user_id"]; src=job["source_path"]
     work=Path(tempfile.mkdtemp(prefix="hs-"))
@@ -137,7 +188,7 @@ def process_job(job):
                 "video_title":f'{Path(job["source_title"]).stem} - Match {idx}',
                 "status":"pending","timestamps":[]
             }).execute().data[0]
-            created.append(row["id"])
+            created.append(row["id"])\n            model_path=os.getenv("YOLO_MODEL_PATH")\n            if model_path and Path(model_path).exists():\n                count=save_fight_clips(row["id"],uid,storage,str(out),model_path)\n                log.info("Saved %s fight clips for match %s",count,row["id"])
         # Never remove the source until every match has encoded, uploaded, and a DB row exists.
         supabase.storage.from_(BUCKET).remove([src])
         supabase.table("video_processing_jobs").update({
