@@ -44,7 +44,7 @@
             <input id="video-file-input" type="file" accept="video/mp4,video/webm,video/quicktime,.mp4,.webm,.mov" hidden />
           </div>
 
-          <p class="upload-note">MP4, WebM, or MOV · Your uploads are saved to your account</p>
+          <p class="upload-note">MP4, WebM, or MOV · Up to 10 hours per recording · Matches are split and queued for analysis</p>
           <p id="status-msg" class="message" role="status" aria-live="polite"></p>
 
           <div id="video-list" class="video-list">
@@ -76,6 +76,7 @@
 
   <script type="module">
     import { supabase } from "./supabase.js";
+    import * as tus from "https://esm.sh/tus-js-client@4.3.1";
 
     const addBtn = document.getElementById("add-video-btn");
     const fileInput = document.getElementById("video-file-input");
@@ -92,7 +93,7 @@
 
     const PAGE_SIZE = 8;
     const VIDEO_BUCKET = "huntsense-videos";
-    const MAX_VIDEO_BYTES = 50 * 1024 * 1024;
+    const MAX_VIDEO_SECONDS = 10 * 60 * 60;
     let pendingFile = null;
     let currentUser = null;
     let allMatches = [];
@@ -207,7 +208,7 @@
       fileInput.click();
     });
 
-    fileInput.addEventListener("change", () => {
+    fileInput.addEventListener("change", async () => {
       const selectedFile = fileInput.files && fileInput.files[0];
       if (!selectedFile) return;
 
@@ -219,8 +220,26 @@
         return;
       }
 
-      if (selectedFile.size > MAX_VIDEO_BYTES) {
-        statusMsg.textContent = "This video is " + (selectedFile.size / 1024 / 1024).toFixed(1) + " MB. The current upload limit is 50 MB per video.";
+      statusMsg.textContent = "Checking recording duration…";
+      let duration = 0;
+      const objectUrl = URL.createObjectURL(selectedFile);
+      try {
+        duration = await new Promise((resolve, reject) => {
+          const probe = document.createElement("video");
+          probe.preload = "metadata";
+          probe.onloadedmetadata = () => resolve(probe.duration);
+          probe.onerror = () => reject(new Error("This video’s duration could not be read. Try exporting it as MP4."));
+          probe.src = objectUrl;
+        });
+      } catch (error) {
+        statusMsg.textContent = error.message;
+        URL.revokeObjectURL(objectUrl);
+        fileInput.value = "";
+        return;
+      }
+      URL.revokeObjectURL(objectUrl);
+      if (!Number.isFinite(duration) || duration <= 0 || duration > MAX_VIDEO_SECONDS) {
+        statusMsg.textContent = "Recordings must be longer than 0 seconds and no longer than 10 hours.";
         fileInput.value = "";
         return;
       }
@@ -253,37 +272,56 @@
 
       const fileToUpload = pendingFile;
       const extension = fileToUpload.name.split(".").pop().toLowerCase();
-      const storagePath = currentUser.id + "/" + crypto.randomUUID() + "." + extension;
+      const storagePath = currentUser.id + "/recordings/" + crypto.randomUUID() + "." + extension;
 
       saveTitleBtn.disabled = true;
       saveTitleBtn.textContent = "Uploading…";
-      statusMsg.textContent = "Uploading " + fileToUpload.name + " (" + (fileToUpload.size / 1024 / 1024).toFixed(1) + " MB)…";
+      statusMsg.textContent = "Starting resumable upload for " + fileToUpload.name + "…";
 
       let uploaded = false;
       try {
-        const { error: uploadError } = await supabase.storage
-          .from(VIDEO_BUCKET)
-          .upload(storagePath, fileToUpload, {
-            contentType: fileToUpload.type || "video/" + extension,
-            cacheControl: "3600",
-            upsert: false
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+        if (sessionError || !session?.access_token) throw new Error("Your session expired. Please sign in again.");
+        const endpoint = "https://rtyzudbbwoulrysvypql.supabase.co/storage/v1/upload/resumable";
+        await new Promise((resolve, reject) => {
+          const upload = new tus.Upload(fileToUpload, {
+            endpoint,
+            retryDelays: [0, 1000, 3000, 5000, 10000, 20000],
+            chunkSize: 6 * 1024 * 1024,
+            headers: {
+              authorization: "Bearer " + session.access_token,
+              apikey: "sb_publishable_kbK6j2X2JxNs9YE8VSBaSw_3co8KhC"
+            },
+            metadata: {
+              bucketName: VIDEO_BUCKET,
+              objectName: storagePath,
+              contentType: fileToUpload.type || "video/" + extension,
+              cacheControl: "3600"
+            },
+            onError: reject,
+            onProgress: (bytesUploaded, bytesTotal) => {
+              const pct = Math.round((bytesUploaded / bytesTotal) * 100);
+              statusMsg.textContent = "Uploading recording… " + pct + "% (" + (bytesUploaded / 1024 / 1024).toFixed(0) + " / " + (bytesTotal / 1024 / 1024).toFixed(0) + " MB)";
+            },
+            onSuccess: resolve
           });
-
-        if (uploadError) {
-          throw new Error("Storage upload failed (" + (uploadError.statusCode || "unknown status") + "): " + uploadError.message);
-        }
+          upload.findPreviousUploads().then(previous => {
+            if (previous.length) upload.resumeFromPreviousUpload(previous[0]);
+            upload.start();
+          }).catch(reject);
+        });
         uploaded = true;
 
-        statusMsg.textContent = "Upload complete. Saving your video to the library…";
-        const { error: insertError } = await supabase.from("match_analyses").insert({
+        statusMsg.textContent = "Upload complete. Adding it to the processing queue…";
+        const { error: insertError } = await supabase.from("video_processing_jobs").insert({
           user_id: currentUser.id,
-          video_path: storagePath,
-          video_title: title,
-          status: "pending"
+          source_path: storagePath,
+          source_title: title,
+          status: "queued"
         });
 
         if (insertError) {
-          throw new Error("The file uploaded, but the library entry failed: " + insertError.message);
+          throw new Error("The recording uploaded, but could not be queued: " + insertError.message);
         }
 
         titleModal.hidden = true;
@@ -291,7 +329,7 @@
         fileInput.value = "";
         titleInput.value = "";
         currentPage = 0;
-        statusMsg.textContent = "“" + title + "” was added to My Videos.";
+        statusMsg.textContent = "“" + title + "” uploaded. Match splitting and analysis are queued.";
         await loadMatches();
       } catch (error) {
         if (uploaded) {
