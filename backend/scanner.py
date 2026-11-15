@@ -1,5 +1,4 @@
-import os, time, subprocess, random, json, base64, logging, requests
-from pathlib import Path
+import os, time, subprocess, random, json
 import cv2
 import numpy as np
 import easyocr
@@ -9,77 +8,17 @@ from ultralytics import YOLO
 from google import genai
 
 load_dotenv()
-logging.basicConfig(level=os.getenv("LOG_LEVEL", "INFO"))
-log = logging.getLogger("huntsense-scanner")
-SUPABASE_URL = os.getenv("SUPABASE_URL", "https://rtyzudbbwoulrysvypql.supabase.co")
-SUPABASE_SERVICE_KEY = os.getenv("SUPABASE_SERVICE_ROLE_KEY") or os.getenv("SUPABASE_SERVICE_KEY")
+SUPABASE_URL = "https://supabase.co"
+SUPABASE_SERVICE_KEY = os.getenv("SUPABASE_SERVICE_KEY") # Paste your Supabase secret service_role key in .env
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
-BUCKET = "huntsense-videos"
 
-if not SUPABASE_SERVICE_KEY:
-    raise RuntimeError("SUPABASE_SERVICE_ROLE_KEY is required.")
 supabase = create_client(SUPABASE_URL, SUPABASE_SERVICE_KEY)
-ai_client = genai.Client(api_key=GEMINI_API_KEY) if GEMINI_API_KEY else None
-MODEL_PATH = os.getenv("YOLO_MODEL_PATH")
-YOLO_MODEL_STORAGE_PATH = os.getenv("YOLO_MODEL_STORAGE_PATH")
-model = None
-ocr_reader = None
+ai_client = genai.Client(api_key=GEMINI_API_KEY)
+ocr_reader = easyocr.Reader(["en"], gpu=True)
 
-def model_available():
-    return bool((MODEL_PATH and Path(MODEL_PATH).is_file()) or YOLO_MODEL_STORAGE_PATH)
-
-def load_model():
-    global model, MODEL_PATH
-    if model is not None:
-        return model
-    path = MODEL_PATH
-    if not path or not Path(path).is_file():
-        if not YOLO_MODEL_STORAGE_PATH:
-            raise RuntimeError("A trained HuntSense YOLO .pt model is required.")
-        path = "/tmp/huntsense-detector.pt"
-        if not Path(path).is_file():
-            Path(path).write_bytes(supabase.storage.from_(BUCKET).download(YOLO_MODEL_STORAGE_PATH))
-        MODEL_PATH = path
-    model = YOLO(path)
-    return model
-
-def get_ocr_reader():
-    global ocr_reader
-    if ocr_reader is None:
-        ocr_reader = easyocr.Reader(["en"], gpu=os.getenv("OCR_GPU", "false").lower() == "true")
-    return ocr_reader
-
-def tus_upload(local_path, object_path, content_type="video/mp4"):
-    storage_url = SUPABASE_URL.replace(".supabase.co", ".storage.supabase.co")
-    endpoint = storage_url.rstrip("/") + "/storage/v1/upload/resumable"
-    metadata = {"bucketName": BUCKET, "objectName": object_path, "contentType": content_type, "cacheControl": "3600"}
-    headers = {
-        "apikey": SUPABASE_SERVICE_KEY, "Authorization": "Bearer " + SUPABASE_SERVICE_KEY,
-        "Tus-Resumable": "1.0.0", "Upload-Length": str(os.path.getsize(local_path)), "x-upsert": "true",
-        "Upload-Metadata": ",".join(f"{k} {base64.b64encode(v.encode()).decode()}" for k,v in metadata.items())
-    }
-    created = requests.post(endpoint, headers=headers, timeout=60)
-    if created.status_code not in (201, 202):
-        raise RuntimeError("Fight-clip upload could not start: " + created.text[:800])
-    location = created.headers.get("Location")
-    if not location:
-        raise RuntimeError("Storage did not return a resumable upload URL.")
-    if location.startswith("/"):
-        location = storage_url.rstrip("/") + location
-    offset = 0
-    with open(local_path, "rb") as source:
-        while True:
-            chunk = source.read(6 * 1024 * 1024)
-            if not chunk:
-                break
-            patch = requests.patch(location, headers={
-                "apikey": SUPABASE_SERVICE_KEY, "Authorization": "Bearer " + SUPABASE_SERVICE_KEY,
-                "Tus-Resumable": "1.0.0", "Upload-Offset": str(offset),
-                "Content-Type": "application/offset+octet-stream"
-            }, data=chunk, timeout=300)
-            if patch.status_code != 204:
-                raise RuntimeError("Fight-clip upload failed: " + patch.text[:800])
-            offset = int(patch.headers.get("Upload-Offset", offset + len(chunk)))
+# 5-Label Starter Model: 0:enemy_hunter, 1:teammate, 2:hit_marker, 3:zombie, 4:birds
+MODEL_PATH = os.getenv("YOLO_MODEL_PATH", "yolo11n.pt")
+model = YOLO(MODEL_PATH)
 
 def compress_video(raw_path, out_path):
     """Super-compress match video to 720p H.265 so it streams smoothly from anywhere."""
@@ -88,15 +27,12 @@ def compress_video(raw_path, out_path):
         "-vf", "scale=-2:720", "-c:v", "libx265", "-crf", "28", "-preset", "fast",
         "-c:a", "aac", "-b:a", "96k", out_path
     ]
-    result = subprocess.run(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE, text=True)
-    if result.returncode:
-        raise RuntimeError("Video compression failed: " + result.stderr[-1500:])
+    subprocess.run(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
 def cut_clip(video_path, start_sec, end_sec, clip_path):
     cmd = [
-        "ffmpeg", "-hide_banner", "-loglevel", "error", "-y",
-        "-ss", str(max(0, start_sec)), "-i", video_path,
-        "-t", str(max(1, end_sec - start_sec)), "-c", "copy", clip_path
+        "ffmpeg", "-y", "-ss", str(max(0, start_sec)), "-to", str(end_sec),
+        "-i", video_path, "-c", "copy", clip_path
     ]
     subprocess.run(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
@@ -121,13 +57,11 @@ def detect_mouse_chop_ms(frames_gray, enemy_center_x, frame_w, fps):
 
 def analyze_match(match_row, track_zombies):
     match_id = match_row["id"]
-    detector = load_model()
-    reader = get_ocr_reader()
     supabase.table("match_analyses").update({"status": "scanning"}).eq("id", match_id).execute()
 
     raw_video = f"/tmp/{match_id}_raw.mp4"
     compressed_video = f"/tmp/{match_id}_web.mp4"
-    data = supabase.storage.from_(BUCKET).download(match_row["video_path"])
+    data = supabase.storage.from_("videos").download(match_row["video_path"])
     with open(raw_video, "wb") as f:
         f.write(data)
 
@@ -160,26 +94,26 @@ def analyze_match(match_row, track_zombies):
         if len(recent_gray) > int(fps):
             recent_gray.pop(0)
 
-        results = detector(frame, verbose=False)[0]
+        results = model(frame, verbose=False)[0]
         enemy_found = False
         enemy_x = frame_w // 2
 
         for box in results.boxes:
-            cls_name = detector.names[int(box.cls[0])]
+            cls_name = model.names[int(box.cls[0])]
             conf = float(box.conf[0])
 
             # Confidence Active Learning Queue (70-89% + 5% random low-confidence)
             if (0.70 <= conf < 0.90) or (0.25 <= conf < 0.70 and random.random() < 0.05):
-                try:
-                    snap_name = f"{match_row['user_id']}/review/{match_id}_{frame_idx}.jpg"
-                    _, buf = cv2.imencode(".jpg", frame)
-                    supabase.storage.from_(BUCKET).upload(snap_name, buf.tobytes(), {"content-type": "image/jpeg"})
-                    supabase.table("yolo_review_queue").insert({
-                        "image_url": snap_name, "predicted_label": cls_name,
-                        "confidence": round(conf, 2), "bbox": box.xyxy[0].tolist()
-                    }).execute()
-                except Exception as queue_error:
-                    log.debug("Optional review queue is not configured: %s", queue_error)
+                snap_name = f"review/{match_id}_{frame_idx}.jpg"
+                _, buf = cv2.imencode(".jpg", frame)
+                supabase.storage.from_("videos").upload(snap_name, buf.tobytes())
+                pub_url = supabase.storage.from_("videos").get_public_url(snap_name)
+                supabase.table("yolo_review_queue").insert({
+                    "image_url": pub_url,
+                    "predicted_label": cls_name,
+                    "confidence": round(conf, 2),
+                    "bbox": box.xyxy[0].tolist()
+                }).execute()
 
             if cls_name == "enemy_hunter" and conf >= 0.70:
                 enemy_found = True
@@ -205,7 +139,7 @@ def analyze_match(match_row, track_zombies):
 
             # Check most used gun ONLY during active fight clips
             hud_crop = frame[int(frame_h * 0.85):frame_h, int(frame_w * 0.75):frame_w]
-            texts = reader.readtext(hud_crop, detail=0)
+            texts = ocr_reader.readtext(hud_crop, detail=0)
             for t in texts:
                 if len(t) > 3:
                     fight_gun_counts[t] = fight_gun_counts.get(t, 0) + 1
@@ -220,34 +154,19 @@ def analyze_match(match_row, track_zombies):
 
     # Compress full match for web streaming & upload back to Supabase
     compress_video(raw_video, compressed_video)
-    tus_upload(compressed_video, match_row["video_path"])
+    with open(compressed_video, "rb") as f:
+        supabase.storage.from_("videos").upload(match_row["video_path"], f.read(), {"upsert": "true"})
 
-    # Save each detected fight clip to the private video bucket and its table.
-    for idx, fight in enumerate(fights, 1):
+    # Send ONLY short fight clips to Gemini 3.8 Flash for weekly mistake aggregation
+    for idx, fight in enumerate(fights):
         clip_file = f"/tmp/{match_id}_fight_{idx}.mp4"
         cut_clip(compressed_video, fight["start_sec"], fight["end_sec"], clip_file)
-        fight["notes"] = "AI notes are not configured."
-        if ai_client:
-            try:
-                uploaded = ai_client.files.upload(file=clip_file)
-                resp = ai_client.models.generate_content(
-                    model=os.getenv("GEMINI_MODEL", "gemini-2.5-flash"),
-                    contents=[uploaded, "Summarize only observable events in this gameplay clip in one concise sentence."]
-                )
-                fight["notes"] = (resp.text or "").strip() or fight["notes"]
-                try:
-                    ai_client.files.delete(name=uploaded.name)
-                except Exception:
-                    pass
-            except Exception as ai_error:
-                log.warning("Optional AI clip summary failed: %s", ai_error)
-        clip_path = f"{match_row['user_id']}/fight-clips/{match_id}/{idx:03d}.mp4"
-        tus_upload(clip_file, clip_path)
-        supabase.table("video_fight_clips").insert({
-            "match_id": match_id, "user_id": match_row["user_id"],
-            "storage_path": clip_path, "start_sec": fight["start_sec"],
-            "end_sec": fight["end_sec"], "analysis_notes": fight["notes"]
-        }).execute()
+        uploaded = ai_client.files.upload(file=clip_file)
+        resp = ai_client.models.generate_content(
+            model="gemini-3.8-flash",
+            contents=[uploaded, "In 1 short sentence, state the biggest tactical or crosshair mistake in this Hunt: Showdown fight clip."]
+        )
+        fight["notes"] = resp.text.strip()
         os.remove(clip_file)
 
     best_gun = max(fight_gun_counts, key=fight_gun_counts.get) if fight_gun_counts else "Not identified yet"
@@ -273,10 +192,10 @@ def main_loop():
     print("HuntSense Linux Worker running. Checking Admin Master Scanner toggle...")
     while True:
         settings = supabase.table("system_settings").select("*").eq("id", 1).single().execute().data
-        if settings and settings.get("scanner_enabled") and model_available():
+        if settings and settings.get("scanner_enabled"):
             pending = supabase.table("match_analyses").select("*").eq("status", "pending").limit(1).execute().data
             if pending:
-                analyze_match(pending[0], False)
+                analyze_match(pending[0], settings.get("track_close_zombies", False))
                 continue
         time.sleep(5)
 
