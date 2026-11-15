@@ -4,6 +4,7 @@ import cv2
 import pytesseract
 import requests
 import base64
+from google import genai
 from dotenv import load_dotenv
 from supabase import create_client
 
@@ -15,6 +16,8 @@ KEY=os.getenv("SUPABASE_SERVICE_ROLE_KEY") or os.getenv("SUPABASE_SERVICE_KEY")
 BUCKET="huntsense-videos"
 MAX_SECONDS=10*60*60
 supabase=create_client(URL, KEY) if KEY else None
+GEMINI_API_KEY=os.getenv("GEMINI_API_KEY")
+ai_client=genai.Client(api_key=GEMINI_API_KEY) if GEMINI_API_KEY else None
 
 def run(cmd):
     result=subprocess.run(cmd,stdout=subprocess.PIPE,stderr=subprocess.PIPE,text=True)
@@ -152,10 +155,23 @@ def save_fight_clips(match_id,user_id,match_path,local_path,model_path):
              "-t",str(max(1,end-start)),"-c:v","libx265","-preset","fast","-crf","28",
              "-c:a","aac","-b:a","96k","-movflags","+faststart",str(clip)])
         path=f"{user_id}/fight-clips/{match_id}/{index:03d}.mp4"
+        notes="AI fight review is not configured."
+        if ai_client:
+            try:
+                uploaded=ai_client.files.upload(file=str(clip))
+                review=ai_client.models.generate_content(
+                    model=os.getenv("GEMINI_MODEL","gemini-2.5-flash"),
+                    contents=[uploaded,"Summarize this Hunt: Showdown gameplay fight in 2-3 concise sentences. Focus on observable positioning, timing, aim, and decisions. Do not guess details that are not visible."]
+                )
+                notes=(review.text or "").strip()
+                try: ai_client.files.delete(name=uploaded.name)
+                except Exception: pass
+            except Exception as exc:
+                log.warning("Gemini review failed for clip %s: %s",index,exc)
         tus_upload(str(clip),path)
         supabase.table("video_fight_clips").insert({
             "match_id":match_id,"user_id":user_id,"storage_path":path,
-            "start_sec":start,"end_sec":end
+            "start_sec":start,"end_sec":end,"analysis_notes":notes
         }).execute()
         saved.append({"start_sec":round(start,1),"end_sec":round(end,1)})
         clip.unlink(missing_ok=True)
@@ -176,6 +192,12 @@ def process_job(job):
         duration,rounds=find_rounds(str(original))
         if not rounds:
             raise ValueError("No round-start screens were confidently detected. Original recording was kept for review.")
+        model_path=os.getenv("YOLO_MODEL_PATH")
+        model_storage_path=os.getenv("YOLO_MODEL_STORAGE_PATH")
+        if (not model_path or not Path(model_path).exists()) and model_storage_path:
+            model_file=work/"huntsense-detector.pt"
+            model_file.write_bytes(supabase.storage.from_(BUCKET).download(model_storage_path))
+            model_path=str(model_file)
         created=[]
         for idx,(start,end) in enumerate(rounds,1):
             out=work/f"match-{idx:02d}.mp4"
@@ -188,12 +210,10 @@ def process_job(job):
                 "status":"pending","timestamps":[]
             }).execute().data[0]
             created.append(row["id"])
-            model_path=os.getenv("YOLO_MODEL_PATH")
             if model_path and Path(model_path).exists():
                 count=save_fight_clips(row["id"],uid,storage,str(out),model_path)
                 log.info("Saved %s fight clips for match %s",count,row["id"])
         # Never remove the source until every match has encoded, uploaded, and a DB row exists.
-        model_path=os.getenv("YOLO_MODEL_PATH")
         if model_path and Path(model_path).exists():
             supabase.storage.from_(BUCKET).remove([src])
             job_status="completed"
