@@ -71,44 +71,41 @@ def text_at(frame):
     return re.sub(r"[^A-Z0-9 ]"," ",pytesseract.image_to_string(gray).upper())
 
 def find_rounds(path):
+    """Seek to one frame every two seconds rather than decoding every frame in a 10h file."""
     cap=cv2.VideoCapture(path)
-    fps=cap.get(cv2.CAP_PROP_FPS) or 30
-    total=int(cap.get(cv2.CAP_PROP_FRAME_COUNT) or 0)
-    duration=total/fps if total else 0
+    duration=probe(path)
     starts=[]
     ends=[]
-    frame_no=0
-    last_sample=-10
-    while True:
+    last_start=-9999
+    last_end=-9999
+    sec=0.0
+    while sec < duration:
+        cap.set(cv2.CAP_PROP_POS_MSEC, sec*1000)
         ok,frame=cap.read()
-        if not ok: break
-        sec=frame_no/fps
-        frame_no+=1
-        if sec-last_sample<2: continue
-        last_sample=sec
-        text=text_at(frame)
-        compact=" ".join(text.split())
+        if not ok:
+            sec += 2
+            continue
+        compact=" ".join(text_at(frame).split())
         if "RISE UP" in compact and ("DAMNED" in compact or "SOULS" in compact):
-            if not starts or sec-starts[-1]>180:
+            if sec-last_start>180:
                 starts.append(sec)
-        # Lobby detection deliberately requires a strong cluster of lobby terms
-        # and only applies after a round has started.
-        lobby_terms=sum(term in compact for term in ("RETURN TO LOBBY","BACK TO LOBBY","MATCH SUMMARY","MISSION SUMMARY","PLAY AGAIN"))
-        if lobby_terms>=1 and starts and sec>starts[-1]+120:
-            if not ends or sec-ends[-1]>120:
-                ends.append(sec)
+                last_start=sec
+        lobby_terms=sum(term in compact for term in (
+            "RETURN TO LOBBY","BACK TO LOBBY","MATCH SUMMARY",
+            "MISSION SUMMARY","PLAY AGAIN","RETURN TO MENU"
+        ))
+        if lobby_terms>=1 and starts and sec>starts[-1]+120 and sec-last_end>90:
+            ends.append(sec)
+            last_end=sec
+        sec += 2
     cap.release()
     rounds=[]
     for i,start in enumerate(starts):
         next_start=starts[i+1] if i+1<len(starts) else duration
         possible=[e for e in ends if start+120<e<next_start]
         end=possible[0] if possible else next_start
-        # Small handles preserve the round intro and end transition.
-        a=max(0,start-4)
-        b=min(duration,end+2)
-        if b-a>=120:
-            rounds.append((a,b))
-    return duration,rounds
+        rounds.append((max(0,start-4),min(duration,end+2)))
+    return duration,[(a,b) for a,b in rounds if b-a>=120]
 
 def encode_segment(source,start,end,target):
     run(["ffmpeg","-hide_banner","-loglevel","error","-y","-ss",str(start),"-i",source,"-t",str(end-start),
@@ -210,21 +207,14 @@ def process_job(job):
                 "status":"pending","timestamps":[]
             }).execute().data[0]
             created.append(row["id"])
-            if model_path and Path(model_path).exists():
-                count=save_fight_clips(row["id"],uid,storage,str(out),model_path)
-                log.info("Saved %s fight clips for match %s",count,row["id"])
-        # Never remove the source until every match has encoded, uploaded, and a DB row exists.
-        if model_path and Path(model_path).exists():
-            supabase.storage.from_(BUCKET).remove([src])
-            job_status="completed"
-            message=None
-        else:
-            job_status="matches_split_model_needed"
-            message="Match videos were split and saved. Configure a trained YOLO_MODEL_PATH to generate fight clips and finish automatic fight analysis. The original recording was retained."
+        # Newly created pending rows are picked up by the existing analysis scanner.
+        # Keep the original recording until the user has verified the outputs.
+        job_status="completed"
+        message=f"{len(created)} match video(s) were split and saved. Match analysis is queued separately."
         supabase.table("video_processing_jobs").update({
             "status":job_status,"error_message":message
         }).eq("id",jid).execute()
-        log.info("Job %s produced %s match videos",jid,len(created))
+        log.info("Job %s produced %s match videos; original retained at %s",jid,len(created),src)
     except Exception as exc:
         log.exception("Job %s failed",jid)
         supabase.table("video_processing_jobs").update({
