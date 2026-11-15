@@ -50,7 +50,8 @@ def get_ocr_reader():
     return ocr_reader
 
 def tus_upload(local_path, object_path, content_type="video/mp4"):
-    endpoint = SUPABASE_URL.replace(".supabase.co", ".storage.supabase.co").rstrip("/") + "/storage/v1/upload/resumable"
+    storage_url = SUPABASE_URL.replace(".supabase.co", ".storage.supabase.co")
+    endpoint = storage_url.rstrip("/") + "/storage/v1/upload/resumable"
     metadata = {"bucketName": BUCKET, "objectName": object_path, "contentType": content_type, "cacheControl": "3600"}
     headers = {
         "apikey": SUPABASE_SERVICE_KEY, "Authorization": "Bearer " + SUPABASE_SERVICE_KEY,
@@ -64,7 +65,7 @@ def tus_upload(local_path, object_path, content_type="video/mp4"):
     if not location:
         raise RuntimeError("Storage did not return a resumable upload URL.")
     if location.startswith("/"):
-        location = SUPABASE_URL.rstrip("/") + location
+        location = storage_url.rstrip("/") + location
     offset = 0
     with open(local_path, "rb") as source:
         while True:
