@@ -32,3 +32,23 @@
 .clip-menu .delete-clip-button:hover{background:rgba(220,90,75,.12)}
 .clip-menu .delete-clip-button:disabled{opacity:.5}
 @media(max-width:480px){.title-panel{padding:20px}.player-heading{align-items:flex-start}}
+
+/* Custom player controls and native-menu replacement */
+.confirm-modal[hidden]{display:none}
+.confirm-modal{position:fixed;inset:0;z-index:40;display:grid;place-items:center;padding:18px}
+.confirm-panel{z-index:1}
+.danger-button{background:#8e3931;color:#fff1ed}
+.custom-video-controls{display:grid;gap:10px;padding:12px 2px 2px}
+.video-progress-row,.video-control-row{display:flex;align-items:center;gap:12px}
+.video-progress-row{color:#bdb5a7;font-size:.76rem;font-variant-numeric:tabular-nums}
+.video-seek{flex:1;min-width:0;height:5px;padding:0;accent-color:#d5ad70;cursor:pointer}
+.video-control-row{justify-content:space-between}
+.video-control-button{margin:0;padding:9px 15px;border:1px solid var(--line);border-radius:10px;background:#292e26;color:#f4f0e8;font-size:.88rem}
+.clip-menu{display:grid;gap:3px;min-width:190px;padding:8px}
+.clip-menu a,.clip-menu label,.clip-menu select,.clip-menu button{display:block;width:100%;margin:0;padding:9px 10px;border:0;border-radius:7px;text-align:left;font:inherit;font-size:.86rem}
+.clip-menu a{color:#f4f0e8;text-decoration:none}
+.clip-menu a:hover,.clip-menu button:hover{background:rgba(213,173,112,.12)}
+.clip-menu label{padding-bottom:3px;color:#bdb5a7;font-size:.75rem}
+.clip-menu select{background:#11150f;color:#f4f0e8;border:1px solid var(--line)}
+.clip-menu .delete-clip-button{color:#f0a29a;background:transparent}
+.player-panel #main-player{max-height:65vh}
