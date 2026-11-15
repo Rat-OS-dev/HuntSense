@@ -169,13 +169,23 @@
       const { error } = await supabase.auth.signInWithPassword({ email: document.getElementById("admin-email").value, password: document.getElementById("admin-password").value });
       button.disabled = false;
       if (error) { message.textContent = error.message; return; }
-      await showApp();
+      loginPanel.hidden = true;
+      appPanel.hidden = false;
+      status.textContent = "Checking secure admin authorization…";
+      await loadAccounts();
+      if (!accounts.length && status.textContent.includes("Access denied")) {
+        await supabase.auth.signOut();
+        loginPanel.hidden = false;
+        appPanel.hidden = true;
+      }
     });
     async function showApp() {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) { loginPanel.hidden = false; appPanel.hidden = true; return; }
-      loginPanel.hidden = true; appPanel.hidden = false;
-      await loadAccounts();
+      // Never trust an existing browser session to reveal the panel.
+      // Require a fresh password sign-in, then let the backend authorize the account.
+      loginPanel.hidden = false;
+      appPanel.hidden = true;
+      document.getElementById("admin-email").value = "";
+      document.getElementById("admin-password").value = "";
     }
     await showApp();
   </script>
