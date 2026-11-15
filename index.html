@@ -99,7 +99,7 @@
     }
     function showTitleDialog(file) {
       pendingFile = file;
-      const baseName = file.name.replace(/\\.[^.]+$/, "").replace(/[_-]+/g, " ").trim();
+      const baseName = file.name.replace(/\.[^.]+$/, "").replace(/[_-]+/g, " ").trim();
       titleInput.value = baseName.slice(0, 80);
       titleModal.hidden = false;
       titleInput.focus();
@@ -245,7 +245,7 @@
         const playMark = document.createElement("span"); playMark.className = "tile-play-mark";
         playMark.setAttribute("aria-hidden", "true"); playMark.textContent = "▶";
         const meta = document.createElement("span"); meta.className = "video-tile-meta";
-        const name = document.createElement("strong"); name.className = "video-name"; name.textContent = file.name.replace(/^[0-9a-f-]+-/i, "").replace(/\\.[^.]+$/, "").replace(/_/g, " ");
+        const name = document.createElement("strong"); name.className = "video-name"; name.textContent = file.name.replace(/^[0-9a-f-]+-/i, "").replace(/\.[^.]+$/, "").replace(/_/g, " ");
         const date = document.createElement("small"); date.textContent = file.created_at ? new Date(file.created_at).toLocaleDateString() : "Uploaded clip";
         meta.append(name, date); tile.append(poster, playMark, meta);
         if (!urlError && signed?.signedUrl) tile.addEventListener("click", () => openVideo(signed.signedUrl, name.textContent, path));
