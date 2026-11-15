@@ -3,8 +3,9 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="theme-color" content="#0c0e0d">
-  <title>Analysis · HuntSense</title>
+  <meta name="theme-color" content="#10120f">
+  <meta name="description" content="Your HuntSense player performance report.">
+  <title>Performance Report · HuntSense</title>
   <link rel="stylesheet" href="styles.css">
 </head>
 <body class="app-page analysis-page">
@@ -14,76 +15,123 @@
       <p class="analysis-nav-caption">WORKSPACE</p>
       <nav class="sidebar-nav">
         <a class="sidebar-link" href="index.html"><span class="nav-dot"></span>My Videos</a>
-        <a class="sidebar-link is-active" href="analysis.html" aria-current="page"><span class="nav-dot"></span>Analysis</a>
+        <a class="sidebar-link is-active" href="analysis.html" aria-current="page"><span class="nav-dot"></span>Performance</a>
       </nav>
       <a class="sidebar-account" href="account.html">Account <span aria-hidden="true">↗</span></a>
     </aside>
 
     <main class="app-main analysis-main">
-      <header class="analysis-topline">
-        <div class="analysis-breadcrumb"><span>HUNTSENSE</span><span class="breadcrumb-slash">/</span> ANALYSIS</div>
-        <span class="workspace-status"><span class="status-indicator"></span> WORKSPACE</span>
+      <header class="report-header">
+        <div>
+          <p class="report-kicker">HUNTSENSE <span>/</span> PLAYER REPORT</p>
+          <h1>Your performance</h1>
+          <p class="report-subtitle">A clear picture of your habits, decisions, and progress in the bayou.</p>
+        </div>
+        <a class="report-upload-link" href="index.html">＋ <span>Add match footage</span></a>
       </header>
 
-      <section class="analysis-hero" aria-labelledby="analysis-title">
-        <div class="analysis-hero-copy">
-          <p class="analysis-eyebrow">THE FIELD REPORT</p>
-          <h1 id="analysis-title">Make every<br><span>hunt count.</span></h1>
-          <p class="analysis-intro">A clearer view of how you play starts with your match footage. Your clips are the first step toward better decisions in the bayou.</p>
-          <a class="analysis-primary-link" href="index.html">Go to my videos <span aria-hidden="true">↗</span></a>
+      <section class="report-section weapon-section" aria-labelledby="weapon-title">
+        <div class="section-topline">
+          <div><p class="report-overline">01 / LOADOUT TRENDS</p><h2 id="weapon-title">Most used weapon</h2></div>
+          <span class="data-status"><i></i> MATCH DATA NEEDED</span>
         </div>
-        <div class="analysis-hero-art" aria-hidden="true">
-          <div class="radar-ring radar-ring-one"></div>
-          <div class="radar-ring radar-ring-two"></div>
-          <div class="radar-crosshair"></div>
-          <div class="radar-center"><span>HS</span></div>
-          <span class="radar-coordinate radar-coordinate-top">31° 02' N</span>
-          <span class="radar-coordinate radar-coordinate-bottom">FIELD / 01</span>
-          <span class="radar-sweep"></span>
-        </div>
-        <div class="hero-index"><span>01</span><span class="hero-index-line"></span><span>YOUR ANALYSIS SPACE</span></div>
-      </section>
-
-      <section class="analysis-start" aria-labelledby="start-title">
-        <div class="analysis-section-heading">
-          <div>
-            <p class="analysis-eyebrow">START HERE</p>
-            <h2 id="start-title">Your review begins with a clip.</h2>
+        <div class="weapon-feature">
+          <div class="weapon-emblem" aria-hidden="true"><span>HS</span><b>FIELD<br>ARMORY</b></div>
+          <div class="weapon-copy">
+            <p class="weapon-label">YOUR GO-TO GUN</p>
+            <h3>Not identified yet</h3>
+            <p>Your most-used weapon will appear here once your matches can be analysed.</p>
           </div>
-          <span class="section-number">01 — 03</span>
-        </div>
-        <div class="analysis-steps">
-          <article class="analysis-step">
-            <span class="step-number">01</span>
-            <div class="step-mark step-mark-upload" aria-hidden="true"><span>↑</span></div>
-            <h3>Upload a match</h3>
-            <p>Add a gameplay recording to your private video library.</p>
-          </article>
-          <article class="analysis-step">
-            <span class="step-number">02</span>
-            <div class="step-mark step-mark-review" aria-hidden="true"><span>⌕</span></div>
-            <h3>Choose a moment</h3>
-            <p>Keep the key encounters and decisions you want to understand.</p>
-          </article>
-          <article class="analysis-step">
-            <span class="step-number">03</span>
-            <div class="step-mark step-mark-insight" aria-hidden="true"><span>↗</span></div>
-            <h3>Build your insights</h3>
-            <p>Match analysis tools will appear here as they become available.</p>
-          </article>
+          <div class="weapon-stat"><strong>—</strong><span>USAGE SHARE</span></div>
         </div>
       </section>
 
-      <footer class="analysis-footer analysis-footer-new">
-        <span>HUNTSENSE</span>
-        <span>YOUR FOOTAGE. YOUR PROGRESS.</span>
-      </footer>
+      <section class="report-section reaction-section" aria-labelledby="reaction-title">
+        <div class="section-topline">
+          <div><p class="report-overline">02 / SPEED &amp; RESPONSE</p><h2 id="reaction-title">Reaction time</h2></div>
+          <span class="section-aside">YOUR RECENT PERFORMANCE</span>
+        </div>
+        <div class="reaction-grid">
+          <article class="reaction-card reaction-card-primary">
+            <span class="metric-label">FASTEST REACTION</span>
+            <strong class="metric-value">—<small> ms</small></strong>
+            <span class="metric-foot">Your quickest verified response</span>
+            <span class="metric-mark" aria-hidden="true">↗</span>
+          </article>
+          <article class="reaction-card">
+            <span class="metric-label">AVERAGE · LAST 2 MONTHS</span>
+            <strong class="metric-value">—<small> ms</small></strong>
+            <span class="metric-foot">Longer-term baseline</span>
+          </article>
+          <article class="reaction-card">
+            <span class="metric-label">AVERAGE · THIS WEEK</span>
+            <strong class="metric-value">—<small> ms</small></strong>
+            <span class="metric-foot">Your current weekly average</span>
+          </article>
+        </div>
+        <p class="measurement-note">Reaction-time estimates require reliable event timing. Video-only estimates may be approximate.</p>
+      </section>
+
+      <section class="report-section problems-section" aria-labelledby="problems-title">
+        <div class="section-topline">
+          <div><p class="report-overline">03 / THE BIGGEST OPPORTUNITIES</p><h2 id="problems-title">What to work on</h2></div>
+          <span class="section-aside">AI-GENERATED · SHORT &amp; SPECIFIC</span>
+        </div>
+        <div class="empty-insight-panel">
+          <div class="insight-orbit" aria-hidden="true"><span>✳</span></div>
+          <div><h3>Your patterns will show up here.</h3><p>HuntSense will call out the few habits costing you most — like rushed peeks, low crosshair placement, or giving away your position with noise. Each note will be short, specific, and based on your matches.</p></div>
+          <span class="panel-lock" aria-label="Awaiting analysis">01—03</span>
+        </div>
+      </section>
+
+      <section class="report-section weekly-section" aria-labelledby="weekly-title">
+        <div class="section-topline">
+          <div><p class="report-overline">04 / YOUR WEEKLY REVIEW</p><h2 id="weekly-title">One match. A closer look.</h2></div>
+          <span class="weekly-frequency"><i></i> 1 MATCH PER WEEK</span>
+        </div>
+        <div class="weekly-review-card">
+          <div class="review-card-head">
+            <div><span class="review-chip">AI-SELECTED MATCH</span><p class="review-date">YOUR NEXT REVIEW</p></div>
+            <span class="review-duration">FULL MATCH BREAKDOWN</span>
+          </div>
+          <div class="review-empty">
+            <div class="review-play-icon" aria-hidden="true">▶</div>
+            <div><h3>No match selected yet</h3><p>Once match analysis is available, HuntSense will choose one match each week and prepare the review for you.</p></div>
+          </div>
+          <div class="review-capabilities">
+            <div><span class="capability-icon">◷</span><span><b>Timestamp by timestamp</b><small>Follow key moments across the match</small></span></div>
+            <div><span class="capability-icon">⌖</span><span><b>Mistakes &amp; better options</b><small>See what happened and what you could change</small></span></div>
+            <div><span class="capability-icon">耳</span><span><b>Sound &amp; awareness</b><small>Moments you may have heard — or been heard</small></span></div>
+            <div><span class="capability-icon">＋</span><span><b>What you did well</b><small>Keep the good decisions in your game</small></span></div>
+          </div>
+        </div>
+      </section>
+
+      <section class="report-section warmup-section" aria-labelledby="warmup-title">
+        <div class="section-topline">
+          <div><p class="report-overline">05 / BEFORE THE NEXT HUNT</p><h2 id="warmup-title">Your 20-minute warmup</h2></div>
+          <span class="warmup-duration">20:00 TOTAL</span>
+        </div>
+        <div class="warmup-card">
+          <div class="warmup-intro">
+            <div class="warmup-badge" aria-hidden="true">20<span>MIN</span></div>
+            <div><p class="warmup-label">BUILT AROUND YOUR GAME</p><h3>Practice with a purpose.</h3><p>Your drills will use your regular weapons and target the specific habits found in your match reviews.</p></div>
+          </div>
+          <div class="warmup-steps">
+            <div class="warmup-step"><span class="warmup-time">05 <small>MIN</small></span><div><b>Weapon familiarisation</b><p>Settle in with the weapons you actually play.</p></div><span class="warmup-step-state">—</span></div>
+            <div class="warmup-step"><span class="warmup-time">10 <small>MIN</small></span><div><b>Targeted skill work</b><p>Focused practice for your biggest improvement area.</p></div><span class="warmup-step-state">—</span></div>
+            <div class="warmup-step"><span class="warmup-time">05 <small>MIN</small></span><div><b>Match-ready scenarios</b><p>Bring the session together with practical drills.</p></div><span class="warmup-step-state">—</span></div>
+          </div>
+          <p class="warmup-footnote">These are planned session blocks, not active drills yet. Personalised weapons and exercises will be generated when match analysis is connected.</p>
+        </div>
+      </section>
+
+      <footer class="report-footer"><span>HUNTSENSE</span><span>PLAY SMARTER. EVERY HUNT.</span></footer>
     </main>
   </div>
 
   <script type="module">
     import { supabase } from "./supabase.js";
-
     const { data: { session }, error } = await supabase.auth.getSession();
     if (error || !session) {
       window.location.replace("login.html");
