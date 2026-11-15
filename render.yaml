@@ -1,0 +1,14 @@
+services:
+  - type: worker
+    name: huntsense-video-processor
+    runtime: docker
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: .
+    plan: starter
+    region: oregon
+    autoDeploy: yes
+    envVars:
+      - key: SUPABASE_URL
+        value: https://rtyzudbbwoulrysvypql.supabase.co
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
