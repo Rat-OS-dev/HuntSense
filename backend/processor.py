@@ -20,6 +20,40 @@ def run(cmd):
         raise RuntimeError(result.stderr[-2500:])
     return result.stdout
 
+def download_source(path,target):
+    signed=supabase.storage.from_(BUCKET).create_signed_url(path,3600)
+    url=signed.get("signedURL") or signed.get("signedUrl")
+    if not url: raise RuntimeError("Could not create source download URL")
+    with requests.get(url,stream=True,timeout=(30,300)) as response:
+        response.raise_for_status()
+        with open(target,"wb") as out:
+            for chunk in response.iter_content(8*1024*1024):
+                if chunk: out.write(chunk)
+
+def tus_upload(local_path, object_path, content_type="video/mp4"):
+    endpoint=URL.rstrip("/")+"/storage/v1/upload/resumable"
+    headers={"apikey":KEY,"Authorization":"Bearer "+KEY,"Tus-Resumable":"1.0.0",
+             "Upload-Length":str(os.path.getsize(local_path)),
+             "Upload-Metadata":",".join(f"{k} {base64.b64encode(v.encode()).decode()}" for k,v in {
+                 "bucketName":BUCKET,"objectName":object_path,"contentType":content_type,"cacheControl":"3600"
+             }.items())}
+    response=requests.post(endpoint,headers=headers,timeout=60)
+    if response.status_code not in (201,202): raise RuntimeError("TUS create failed: "+response.text[:1000])
+    location=response.headers.get("Location")
+    if not location: raise RuntimeError("TUS server did not return an upload location")
+    if location.startswith("/"): location=URL.rstrip("/")+location
+    offset=0
+    with open(local_path,"rb") as source:
+        while True:
+            chunk=source.read(6*1024*1024)
+            if not chunk: break
+            patch_headers={"apikey":KEY,"Authorization":"Bearer "+KEY,"Tus-Resumable":"1.0.0",
+                           "Upload-Offset":str(offset),"Content-Type":"application/offset+octet-stream"}
+            patch=requests.patch(location,headers=patch_headers,data=chunk,timeout=300)
+            if patch.status_code not in (204,): raise RuntimeError("TUS chunk upload failed: "+patch.text[:1000])
+            offset=int(patch.headers.get("Upload-Offset",offset+len(chunk)))
+    return True
+
 def probe(path):
     raw=run(["ffprobe","-v","error","-show_entries","format=duration","-of","default=noprint_wrappers=1:nokey=1",path])
     return float(raw.strip())
@@ -97,7 +131,7 @@ def process_job(job):
             out=work/f"match-{idx:02d}.mp4"
             encode_segment(str(original),start,end,str(out))
             storage=f"{uid}/matches/{jid}/match-{idx:02d}.mp4"
-            supabase.storage.from_(BUCKET).upload(storage,out.read_bytes(),{"content-type":"video/mp4","upsert":"false"})
+            tus_upload(str(out),storage)
             row=supabase.table("match_analyses").insert({
                 "user_id":uid,"video_path":storage,
                 "video_title":f'{Path(job["source_title"]).stem} - Match {idx}',
