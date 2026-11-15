@@ -40,22 +40,50 @@
     </section>
   </div>
 
+  <div class="confirm-modal" id="delete-confirm-modal" hidden role="dialog" aria-modal="true" aria-labelledby="delete-confirm-heading">
+    <div class="player-backdrop"></div>
+    <section class="title-panel confirm-panel">
+      <h2 id="delete-confirm-heading">Delete this video?</h2>
+      <p id="delete-confirm-text">Are you sure you want to delete this clip?</p>
+      <div class="title-actions">
+        <button class="secondary" id="cancel-delete" type="button">No</button>
+        <button class="danger-button" id="confirm-delete" type="button">Yes, delete</button>
+      </div>
+    </section>
+  </div>
+
   <div class="player-modal" id="player-modal" hidden role="dialog" aria-modal="true" aria-labelledby="player-title">
     <div class="player-backdrop" data-close-player></div>
     <section class="player-panel">
       <div class="player-heading">
         <div><p class="eyebrow">HUNTSENSE PLAYER</p><h2 id="player-title">Your video</h2></div>
         <div class="player-actions">
-          <div class="clip-menu-wrap">
-            <button class="clip-menu-button" id="clip-menu-button" type="button" aria-label="Clip options" aria-expanded="false">⋯</button>
-            <div class="clip-menu" id="clip-menu" hidden>
-              <button class="delete-clip-button" id="delete-clip-button" type="button">Delete clip</button>
-            </div>
-          </div>
           <button class="player-close" type="button" data-close-player aria-label="Close player">×</button>
         </div>
       </div>
-      <video id="main-player" controls playsinline></video>
+      <video id="main-player" playsinline preload="metadata"></video>
+      <div class="custom-video-controls">
+        <div class="video-progress-row">
+          <span id="current-time">0:00</span>
+          <input id="video-seek" class="video-seek" type="range" min="0" max="1000" value="0" aria-label="Seek video">
+          <span id="duration-time">0:00</span>
+        </div>
+        <div class="video-control-row">
+          <button id="play-pause-button" type="button" class="video-control-button">Pause</button>
+          <div class="clip-menu-wrap">
+            <button class="clip-menu-button" id="clip-menu-button" type="button" aria-label="More video options" aria-expanded="false">⋯</button>
+            <div class="clip-menu" id="clip-menu" hidden>
+              <a id="download-clip" href="#" download>Download</a>
+              <label for="playback-speed">Playback speed</label>
+              <select id="playback-speed" aria-label="Playback speed">
+                <option value="0.5">0.5×</option><option value="0.75">0.75×</option><option value="1" selected>Normal</option><option value="1.25">1.25×</option><option value="1.5">1.5×</option><option value="2">2×</option>
+              </select>
+              <button id="picture-in-picture" type="button">Picture in picture</button>
+              <button class="delete-clip-button" id="delete-clip-button" type="button">Delete video</button>
+            </div>
+          </div>
+        </div>
+      </div>
     </section>
   </div>
   <script type="module">
@@ -70,6 +98,17 @@
     const playerModal = document.querySelector("#player-modal");
     const mainPlayer = document.querySelector("#main-player");
     const playerTitle = document.querySelector("#player-title");
+    const deleteConfirmModal = document.querySelector("#delete-confirm-modal");
+    const deleteConfirmText = document.querySelector("#delete-confirm-text");
+    const cancelDeleteButton = document.querySelector("#cancel-delete");
+    const confirmDeleteButton = document.querySelector("#confirm-delete");
+    const downloadClip = document.querySelector("#download-clip");
+    const playbackSpeed = document.querySelector("#playback-speed");
+    const pipButton = document.querySelector("#picture-in-picture");
+    const playPauseButton = document.querySelector("#play-pause-button");
+    const videoSeek = document.querySelector("#video-seek");
+    const currentTimeLabel = document.querySelector("#current-time");
+    const durationTimeLabel = document.querySelector("#duration-time");
     const titleModal = document.querySelector("#title-modal");
     const titleInput = document.querySelector("#clip-title-input");
     const saveTitleButton = document.querySelector("#save-title");
@@ -84,12 +123,16 @@
     function openVideo(url, title, path) {
       activeClipPath = path; activeClipTitle = title;
       playerTitle.textContent = title; mainPlayer.src = url;
+      downloadClip.href = url; downloadClip.download = title + ".mp4";
+      playbackSpeed.value = "1"; mainPlayer.playbackRate = 1;
+      videoSeek.value = "0"; currentTimeLabel.textContent = "0:00"; durationTimeLabel.textContent = "0:00";
+      playPauseButton.textContent = "Pause";
       playerModal.hidden = false; document.body.classList.add("player-open");
       mainPlayer.play().catch(() => {});
     }
     function closeVideo() {
       mainPlayer.pause(); mainPlayer.removeAttribute("src"); mainPlayer.load();
-      playerModal.hidden = true; clipMenu.hidden = true; clipMenuButton.setAttribute("aria-expanded", "false"); document.body.classList.remove("player-open");
+      playerModal.hidden = true; clipMenu.hidden = true; clipMenuButton.setAttribute("aria-expanded", "false"); deleteConfirmModal.hidden = true; document.body.classList.remove("player-open");
     }
     function closeTitleDialog() {
       titleModal.hidden = true;
@@ -111,26 +154,54 @@
       clipMenu.hidden = !clipMenu.hidden;
       clipMenuButton.setAttribute("aria-expanded", String(!clipMenu.hidden));
     });
-    deleteClipButton.addEventListener("click", async () => {
-      if (!activeClipPath || !currentUserId) return;
+    deleteClipButton.addEventListener("click", () => {
+      if (!activeClipPath) return;
       clipMenu.hidden = true;
       clipMenuButton.setAttribute("aria-expanded", "false");
-      const confirmed = window.confirm('Are you sure you want to delete the clip "' + activeClipTitle + '"? This cannot be undone.');
-      if (!confirmed) return;
-      deleteClipButton.disabled = true;
+      deleteConfirmText.textContent = 'Are you sure you want to delete "' + activeClipTitle + '"?';
+      deleteConfirmModal.hidden = false;
+    });
+    cancelDeleteButton.addEventListener("click", () => { deleteConfirmModal.hidden = true; });
+    confirmDeleteButton.addEventListener("click", async () => {
+      if (!activeClipPath || !currentUserId) return;
+      confirmDeleteButton.disabled = true;
       try {
         const { error: deleteError } = await supabase.storage.from(BUCKET).remove([activeClipPath]);
         if (deleteError) throw deleteError;
-        closeVideo();
-        message.textContent = 'Deleted "' + activeClipTitle + '".';
+        const deletedTitle = activeClipTitle;
         activeClipPath = null;
         activeClipTitle = "";
+        closeVideo();
+        message.textContent = 'Deleted "' + deletedTitle + '".';
         await loadVideos(currentUserId);
       } catch (error) {
-        message.textContent = error.message || "The clip could not be deleted.";
+        deleteConfirmText.textContent = error.message || "The video could not be deleted. Please try again.";
       } finally {
-        deleteClipButton.disabled = false;
+        confirmDeleteButton.disabled = false;
       }
+    });
+    function formatTime(seconds) {
+      if (!Number.isFinite(seconds)) return "0:00";
+      const mins = Math.floor(seconds / 60);
+      const secs = Math.floor(seconds % 60).toString().padStart(2, "0");
+      return mins + ":" + secs;
+    }
+    mainPlayer.addEventListener("loadedmetadata", () => { durationTimeLabel.textContent = formatTime(mainPlayer.duration); });
+    mainPlayer.addEventListener("timeupdate", () => {
+      currentTimeLabel.textContent = formatTime(mainPlayer.currentTime);
+      if (Number.isFinite(mainPlayer.duration) && mainPlayer.duration > 0) videoSeek.value = String(Math.round(mainPlayer.currentTime / mainPlayer.duration * 1000));
+    });
+    mainPlayer.addEventListener("play", () => { playPauseButton.textContent = "Pause"; });
+    mainPlayer.addEventListener("pause", () => { playPauseButton.textContent = "Play"; });
+    playPauseButton.addEventListener("click", () => { if (mainPlayer.paused) mainPlayer.play().catch(() => {}); else mainPlayer.pause(); });
+    videoSeek.addEventListener("input", () => { if (Number.isFinite(mainPlayer.duration)) mainPlayer.currentTime = Number(videoSeek.value) / 1000 * mainPlayer.duration; });
+    playbackSpeed.addEventListener("change", () => { mainPlayer.playbackRate = Number(playbackSpeed.value); });
+    pipButton.addEventListener("click", async () => {
+      try {
+        if (document.pictureInPictureElement) await document.exitPictureInPicture();
+        else if (document.pictureInPictureEnabled && mainPlayer.requestPictureInPicture) await mainPlayer.requestPictureInPicture();
+        else message.textContent = "Picture in picture is not supported by this browser.";
+      } catch (error) { message.textContent = "Could not open picture in picture: " + error.message; }
     });
     playerModal.querySelectorAll("[data-close-player]").forEach(el => el.addEventListener("click", closeVideo));
     document.addEventListener("keydown", event => { if (event.key === "Escape" && !playerModal.hidden) closeVideo(); });
