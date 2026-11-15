@@ -93,6 +93,7 @@
     const $ = (id) => document.getElementById(id);
     let currentUser = null;
     let scannerEnabled = false;
+    let selectedOriginal = { name: "", email: "" };
 
     async function verifyAdmin() {
       const { data: { user }, error } = await supabase.auth.getUser();
@@ -203,6 +204,7 @@
     function openEditor(user) {
       $("edit-user-id").value = user.id;
       $("edit-current-email").textContent = "Account: " + (user.email || "(No email)");
+      selectedOriginal = { name: user.name || "", email: user.email || "" };
       $("edit-name").value = user.name || "";
       $("edit-email").value = user.email || "";
       $("edit-password").value = "";
@@ -220,12 +222,14 @@
 
     $("save-edit").addEventListener("click", async () => {
       const id = $("edit-user-id").value;
-      const changes = [
-        { field: "name", value: $("edit-name").value.trim() },
-        { field: "email", value: $("edit-email").value.trim() },
-      ];
+      const changes = [];
+      const nextName = $("edit-name").value.trim();
+      const nextEmail = $("edit-email").value.trim();
+      if (nextName !== selectedOriginal.name) changes.push({ field: "name", value: nextName });
+      if (nextEmail.toLowerCase() !== selectedOriginal.email.toLowerCase()) changes.push({ field: "email", value: nextEmail });
       const password = $("edit-password").value;
       if (password) changes.push({ field: "password", value: password });
+      if (!changes.length) { $("edit-message").textContent = "No changes to save."; return; }
 
       const save = $("save-edit");
       save.disabled = true;
