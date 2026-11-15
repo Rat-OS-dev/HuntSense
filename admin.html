@@ -26,14 +26,20 @@
     @media(max-width:680px){.account-row{grid-template-columns:1fr}.scanner-row{align-items:flex-start}}
   </style>
 </head>
-<body hidden>
-  <header class="topbar" style="justify-content:space-between">
-    <a class="account-link" href="index.html">← My Videos</a>
-    <span style="color:var(--gold);font-size:.8rem;font-weight:700">ADMIN · ryan@ratys.com</span>
-  </header>
-
-  <main class="admin-wrap">
-    <p class="eyebrow">PRIVATE ADMIN DASHBOARD</p>
+<body class="app-page" hidden>
+  <div class="app-shell">
+    <aside class="app-sidebar">
+      <a class="sidebar-brand" href="index.html">HuntSense</a>
+      <nav class="sidebar-nav" aria-label="Main navigation">
+        <a class="sidebar-link" href="index.html"><span class="nav-dot"></span>My Videos</a>
+        <a class="sidebar-link" href="analysis.html"><span class="nav-dot"></span>Analysis</a>
+        <a class="sidebar-link is-active" href="admin.html" aria-current="page"><span class="nav-dot"></span>Admin</a>
+      </nav>
+      <a class="sidebar-account" href="account.html"><span>Account</span><span>↗</span></a>
+    </aside>
+    <main class="app-main">
+      <div class="admin-wrap">
+        <p class="eyebrow">PRIVATE ADMIN · ryan@ratys.com</p>
     <h1>HuntSense Admin</h1>
 
     <section class="admin-card" aria-labelledby="scanner-heading">
@@ -62,7 +68,9 @@
         <div style="padding:18px;color:var(--muted)">Enter at least two characters of an email address to search.</div>
       </div>
     </section>
-  </main>
+      </div>
+    </main>
+  </div>
 
   <div id="edit-modal" class="title-modal" hidden>
     <div class="player-backdrop"></div>
