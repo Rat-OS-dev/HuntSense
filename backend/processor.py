@@ -36,7 +36,8 @@ def download_source(path,target):
                 if chunk: out.write(chunk)
 
 def tus_upload(local_path, object_path, content_type="video/mp4"):
-    endpoint=URL.replace(".supabase.co",".storage.supabase.co").rstrip("/")+"/storage/v1/upload/resumable"
+    STORAGE_URL=URL.replace(".supabase.co",".storage.supabase.co")
+    endpoint=STORAGE_URL.rstrip("/")+"/storage/v1/upload/resumable"
     headers={"apikey":KEY,"Authorization":"Bearer "+KEY,"Tus-Resumable":"1.0.0",
              "Upload-Length":str(os.path.getsize(local_path)),"x-upsert":"true",
              "Upload-Metadata":",".join(f"{k} {base64.b64encode(v.encode()).decode()}" for k,v in {
@@ -46,7 +47,7 @@ def tus_upload(local_path, object_path, content_type="video/mp4"):
     if response.status_code not in (201,202): raise RuntimeError("TUS create failed: "+response.text[:1000])
     location=response.headers.get("Location")
     if not location: raise RuntimeError("TUS server did not return an upload location")
-    if location.startswith("/"): location=URL.rstrip("/")+location
+    if location.startswith("/"): location=STORAGE_URL.rstrip("/")+location
     offset=0
     with open(local_path,"rb") as source:
         while True:
