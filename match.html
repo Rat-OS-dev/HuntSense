@@ -112,6 +112,14 @@
       </div>
     </section>
 
+    <section class="section-card">
+      <h2>Automatic Fight Clips</h2>
+      <p class="sub">Short clips detected inside this match recording.</p>
+      <div id="auto-fight-clips" class="pill-grid">
+        <span style="color:var(--muted)">Loading saved fight clips…</span>
+      </div>
+    </section>
+
     <!-- 2. Per-Timestamp Reaction Time -->
     <section class="section-card">
       <h2>Reaction Time Per Fight</h2>
@@ -362,6 +370,40 @@
       player.addEventListener("error", () => {
         console.error("Video playback error:", player.error);
       }, { once: true });
+
+      const { data: savedClips, error: clipsError } = await supabase.from("video_fight_clips")
+        .select("id, storage_path, start_sec, end_sec, analysis_notes")
+        .eq("match_id", match.id).order("start_sec", { ascending: true });
+      const clipsContainer = document.getElementById("auto-fight-clips");
+      clipsContainer.replaceChildren();
+      if (clipsError) {
+        clipsContainer.textContent = "Fight clips could not be loaded.";
+      } else if (!savedClips?.length) {
+        clipsContainer.textContent = "No automatic fight clips have been saved for this match yet.";
+      } else {
+        for (const clip of savedClips) {
+          const { data: clipUrl } = await supabase.storage.from(VIDEO_BUCKET).createSignedUrl(clip.storage_path, 3600);
+          if (!clipUrl?.signedUrl) continue;
+          const card = document.createElement("div");
+          card.style.cssText = "width:min(100%,520px);padding:12px;border:1px solid rgba(255,255,255,.08);border-radius:12px;background:rgba(0,0,0,.18)";
+          const heading = document.createElement("strong");
+          heading.textContent = "Fight clip · " + fmtTime(clip.start_sec) + " – " + fmtTime(clip.end_sec);
+          const video = document.createElement("video");
+          video.src = clipUrl.signedUrl;
+          video.controls = true;
+          video.preload = "metadata";
+          video.playsInline = true;
+          video.style.cssText = "display:block;width:100%;margin-top:10px;border-radius:8px;background:#000";
+          card.append(heading, video);
+          if (clip.analysis_notes) {
+            const note = document.createElement("p");
+            note.style.cssText = "margin:10px 0 0;color:var(--muted);font-size:.85rem";
+            note.textContent = clip.analysis_notes;
+            card.append(note);
+          }
+          clipsContainer.append(card);
+        }
+      }
 
       const fights = match.timestamps || [];
       if (fights.length > 0) {
