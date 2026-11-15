@@ -1,0 +1,6 @@
+supabase
+opencv-python-headless
+python-dotenv
+pytesseract
+requests
+ultralytics
