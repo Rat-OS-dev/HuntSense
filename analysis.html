@@ -1,145 +1,143 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="theme-color" content="#10120f">
-  <meta name="description" content="Your HuntSense player performance report.">
-  <title>Performance Report · HuntSense</title>
-  <link rel="stylesheet" href="styles.css">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Overall Performance · HuntSense</title>
+  <link rel="stylesheet" href="styles.css" />
+  <style>
+    .hub-wrap{width:min(100% - 48px,1040px);margin:0 auto;padding:40px 0 80px}
+    .hub-card{margin-top:24px;padding:24px;border:1px solid rgba(255,255,255,.085);border-radius:18px;background:linear-gradient(145deg,#191d18,#121512)}
+    .mistake-item{padding:14px 16px;border-left:3px solid var(--gold);background:rgba(213,173,112,.06);border-radius:0 12px 12px 0;margin-bottom:12px}
+    .monthly-window{margin-top:16px;padding:18px;border:1px solid rgba(213,173,112,.22);border-radius:14px;background:#101310;max-height:340px;overflow-y:auto}
+    .monthly-window li{margin-bottom:9px;line-height:1.55;color:#dfd8ca}
+    select.match-select{width:100%;max-width:440px;padding:12px;border-radius:10px;border:1px solid var(--line);background:#101310;color:#fff;font:inherit}
+  </style>
 </head>
-<body class="app-page analysis-page">
-  <div class="app-shell analysis-shell">
-    <aside class="app-sidebar analysis-sidebar" aria-label="Main navigation">
-      <a class="sidebar-brand" href="index.html">HuntSense</a>
-      <p class="analysis-nav-caption">WORKSPACE</p>
-      <nav class="sidebar-nav">
-        <a class="sidebar-link" href="index.html"><span class="nav-dot"></span>My Videos</a>
-        <a class="sidebar-link is-active" href="analysis.html" aria-current="page"><span class="nav-dot"></span>Performance</a>
-      </nav>
-      <a class="sidebar-account" href="account.html">Account <span aria-hidden="true">↗</span></a>
-    </aside>
+<body>
+  <header class="topbar" style="justify-content:space-between">
+    <a class="account-link" href="index.html">← My Videos</a>
+    <a class="account-link" href="admin.html">Admin Control</a>
+  </header>
 
-    <main class="app-main analysis-main">
-      <header class="report-header">
-        <div>
-          <p class="report-kicker">HUNTSENSE <span>/</span> PLAYER REPORT</p>
-          <h1>Your performance</h1>
-          <p class="report-subtitle">A clear picture of your habits, decisions, and progress in the bayou.</p>
-        </div>
-        <a class="report-upload-link" href="index.html">＋ <span>Add match footage</span></a>
-      </header>
+  <main class="hub-wrap">
+    <p class="eyebrow">HUNTSENSE · OVERALL ANALYST HUB</p>
+    <h1>Monthly & Weekly Breakdown</h1>
+    <p style="color:var(--muted)">Macro patterns across all your fights, sound traps, and your selected full-match review.</p>
 
-      <section class="report-section weapon-section" aria-labelledby="weapon-title">
-        <div class="section-topline">
-          <div><p class="report-overline">01 / LOADOUT TRENDS</p><h2 id="weapon-title">Most used weapon</h2></div>
-          <span class="data-status"><i></i> MATCH DATA NEEDED</span>
+    <!-- 1. TOP: Biggest Mistakes This Week -->
+    <section class="hub-card">
+      <p class="eyebrow">01 · WEEKLY CLIP AGGREGATION (GEMINI FLASH)</p>
+      <h2 style="margin:6px 0 6px">Biggest Mistakes This Week</h2>
+      <p style="color:var(--muted);font-size:.86rem;margin:0 0 18px">Generated from all your short YOLO fight clips and bird/sound clips this week.</p>
+      <div id="weekly-mistakes-list">
+        <div class="mistake-item">
+          <strong>Waiting for weekly fight clips</strong>
+          <p style="margin:4px 0 0;color:var(--muted);font-size:.86rem">Once your matches are scanned, Gemini will call out recurring habits like low crosshair placement, rushed peeks, or triggering crows.</p>
         </div>
-        <div class="weapon-feature">
-          <div class="weapon-emblem" aria-hidden="true"><span>HS</span><b>FIELD<br>ARMORY</b></div>
-          <div class="weapon-copy">
-            <p class="weapon-label">YOUR GO-TO GUN</p>
-            <h3>Not identified yet</h3>
-            <p>Your most-used weapon will appear here once your matches can be analysed.</p>
-          </div>
-          <div class="weapon-stat"><strong>—</strong><span>USAGE SHARE</span></div>
-        </div>
-      </section>
+      </div>
+    </section>
 
-      <section class="report-section reaction-section" aria-labelledby="reaction-title">
-        <div class="section-topline">
-          <div><p class="report-overline">02 / SPEED &amp; RESPONSE</p><h2 id="reaction-title">Reaction time</h2></div>
-          <span class="section-aside">YOUR RECENT PERFORMANCE</span>
-        </div>
-        <div class="reaction-grid">
-          <article class="reaction-card reaction-card-primary">
-            <span class="metric-label">FASTEST REACTION</span>
-            <strong class="metric-value">—<small> ms</small></strong>
-            <span class="metric-foot">Your quickest verified response</span>
-            <span class="metric-mark" aria-hidden="true">↗</span>
-          </article>
-          <article class="reaction-card">
-            <span class="metric-label">AVERAGE · LAST 2 MONTHS</span>
-            <strong class="metric-value">—<small> ms</small></strong>
-            <span class="metric-foot">Longer-term baseline</span>
-          </article>
-          <article class="reaction-card">
-            <span class="metric-label">AVERAGE · THIS WEEK</span>
-            <strong class="metric-value">—<small> ms</small></strong>
-            <span class="metric-foot">Your current weekly average</span>
-          </article>
-        </div>
-        <p class="measurement-note">Reaction-time estimates require reliable event timing. Video-only estimates may be approximate.</p>
-      </section>
+    <!-- 2. MIDDLE: 1 Full Match Monthly Review -->
+    <section class="hub-card">
+      <p class="eyebrow">02 · 1 FULL MATCH PER MONTH</p>
+      <h2 style="margin:6px 0 6px">Monthly Full-Match Review</h2>
+      <p style="color:var(--muted);font-size:.86rem;margin:0 0 16px">Pick one match this month. At the end of the month, the entire match is uploaded to Gemini Flash to catch rotations, missed shots, and positioning YOLO wouldn't see.</p>
 
-      <section class="report-section problems-section" aria-labelledby="problems-title">
-        <div class="section-topline">
-          <div><p class="report-overline">03 / THE BIGGEST OPPORTUNITIES</p><h2 id="problems-title">What to work on</h2></div>
-          <span class="section-aside">AI-GENERATED · SHORT &amp; SPECIFIC</span>
-        </div>
-        <div class="empty-insight-panel">
-          <div class="insight-orbit" aria-hidden="true"><span>✳</span></div>
-          <div><h3>Your patterns will show up here.</h3><p>HuntSense will call out the few habits costing you most — like rushed peeks, low crosshair placement, or giving away your position with noise. Each note will be short, specific, and based on your matches.</p></div>
-          <span class="panel-lock" aria-label="Awaiting analysis">01—03</span>
-        </div>
-      </section>
+      <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:center">
+        <select id="monthly-match-select" class="match-select">
+          <option value="">Select a match for this month's full review...</option>
+        </select>
+        <button id="save-monthly-btn" style="margin:0">Lock In Monthly Match</button>
+      </div>
+      <small id="monthly-msg" style="display:block;margin-top:8px;color:var(--gold-bright)"></small>
 
-      <section class="report-section weekly-section" aria-labelledby="weekly-title">
-        <div class="section-topline">
-          <div><p class="report-overline">04 / YOUR WEEKLY REVIEW</p><h2 id="weekly-title">One match. A closer look.</h2></div>
-          <span class="weekly-frequency"><i></i> 1 MATCH PER WEEK</span>
-        </div>
-        <div class="weekly-review-card">
-          <div class="review-card-head">
-            <div><span class="review-chip">AI-SELECTED MATCH</span><p class="review-date">YOUR NEXT REVIEW</p></div>
-            <span class="review-duration">FULL MATCH BREAKDOWN</span>
-          </div>
-          <div class="review-empty">
-            <div class="review-play-icon" aria-hidden="true">▶</div>
-            <div><h3>No match selected yet</h3><p>Once match analysis is available, HuntSense will choose one match each week and prepare the review for you.</p></div>
-          </div>
-          <div class="review-capabilities">
-            <div><span class="capability-icon">◷</span><span><b>Timestamp by timestamp</b><small>Follow key moments across the match</small></span></div>
-            <div><span class="capability-icon">⌖</span><span><b>Mistakes &amp; better options</b><small>See what happened and what you could change</small></span></div>
-            <div><span class="capability-icon">耳</span><span><b>Sound &amp; awareness</b><small>Moments you may have heard — or been heard</small></span></div>
-            <div><span class="capability-icon">＋</span><span><b>What you did well</b><small>Keep the good decisions in your game</small></span></div>
-          </div>
-        </div>
-      </section>
+      <div class="monthly-window">
+        <p id="monthly-summary-text" style="margin:0 0 12px;color:#f3e8d5;line-height:1.6">
+          No monthly full-match review completed yet. Select your match above to queue it for end-of-month Gemini review.
+        </p>
+        <ul id="monthly-bullets" style="margin:0;padding-left:20px"></ul>
+      </div>
+    </section>
 
-      <section class="report-section warmup-section" aria-labelledby="warmup-title">
-        <div class="section-topline">
-          <div><p class="report-overline">05 / BEFORE THE NEXT HUNT</p><h2 id="warmup-title">Your 20-minute warmup</h2></div>
-          <span class="warmup-duration">20:00 TOTAL</span>
-        </div>
-        <div class="warmup-card">
-          <div class="warmup-intro">
-            <div class="warmup-badge" aria-hidden="true">20<span>MIN</span></div>
-            <div><p class="warmup-label">BUILT AROUND YOUR GAME</p><h3>Practice with a purpose.</h3><p>Your drills will use your regular weapons and target the specific habits found in your match reviews.</p></div>
-          </div>
-          <div class="warmup-steps">
-            <div class="warmup-step"><span class="warmup-time">05 <small>MIN</small></span><div><b>Weapon familiarisation</b><p>Settle in with the weapons you actually play.</p></div><span class="warmup-step-state">—</span></div>
-            <div class="warmup-step"><span class="warmup-time">10 <small>MIN</small></span><div><b>Targeted skill work</b><p>Focused practice for your biggest improvement area.</p></div><span class="warmup-step-state">—</span></div>
-            <div class="warmup-step"><span class="warmup-time">05 <small>MIN</small></span><div><b>Match-ready scenarios</b><p>Bring the session together with practical drills.</p></div><span class="warmup-step-state">—</span></div>
-          </div>
-          <p class="warmup-footnote">These are planned session blocks, not active drills yet. Personalised weapons and exercises will be generated when match analysis is connected.</p>
-        </div>
-      </section>
-
-      <footer class="report-footer"><span>HUNTSENSE</span><span>PLAY SMARTER. EVERY HUNT.</span></footer>
-    </main>
-  </div>
+    <!-- 3. BOTTOM: Monthly Average Reaction Time -->
+    <section class="hub-card">
+      <p class="eyebrow">03 · SPEED & RESPONSE</p>
+      <h2 style="margin:6px 0 6px">Monthly Average Reaction Time</h2>
+      <p style="color:var(--muted);font-size:.86rem;margin:0 0 12px">Average time this month from first seeing an enemy Hunter to noticeably fast mouse movement chopping toward them.</p>
+      <div id="monthly-reaction-ms" style="font-size:2.8rem;font-weight:800;color:var(--gold-bright)">— ms</div>
+    </section>
+  </main>
 
   <script type="module">
     import { supabase } from "./supabase.js";
-    const { data: { session }, error } = await supabase.auth.getSession();
-    if (error || !session) {
-      window.location.replace("login.html");
-    } else {
-      supabase.auth.onAuthStateChange((_event, nextSession) => {
-        if (!nextSession) window.location.replace("login.html");
-      });
+
+    async function loadAnalystHub() {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      // Populate dropdown with this month's matches
+      const { data: matches } = await supabase
+        .from("match_analyses")
+        .select("id, video_title, created_at, selected_for_monthly, avg_reaction_ms")
+        .eq("user_id", user.id)
+        .order("created_at", { ascending: false });
+
+      const sel = document.getElementById("monthly-match-select");
+      if (matches && matches.length > 0) {
+        matches.forEach(m => {
+          const opt = document.createElement("option");
+          opt.value = m.id;
+          opt.textContent = `${m.video_title} (${new Date(m.created_at).toLocaleDateString()})`;
+          if (m.selected_for_monthly) opt.selected = true;
+          sel.appendChild(opt);
+        });
+
+        // Calculate monthly average reaction time from scanned fights
+        const validTimes = matches.map(m => m.avg_reaction_ms).filter(Boolean);
+        if (validTimes.length > 0) {
+          const avg = Math.round(validTimes.reduce((a, b) => a + b, 0) / validTimes.length);
+          document.getElementById("monthly-reaction-ms").textContent = `${avg} ms`;
+        }
+      }
+
+      // Load Gemini weekly mistakes & monthly full-match report
+      const { data: report } = await supabase
+        .from("ai_coaching_reports")
+        .select("*")
+        .eq("user_id", user.id)
+        .order("updated_at", { ascending: false })
+        .limit(1)
+        .single();
+
+      if (report) {
+        if (report.weekly_mistakes?.length > 0) {
+          document.getElementById("weekly-mistakes-list").innerHTML = report.weekly_mistakes.map(m => `
+            <div class="mistake-item">
+              <strong>${m.title}</strong>
+              <p style="margin:4px 0 0;color:var(--muted);font-size:.86rem">${m.detail}</p>
+            </div>
+          `).join("");
+        }
+        if (report.monthly_summary) {
+          document.getElementById("monthly-summary-text").textContent = report.monthly_summary;
+          document.getElementById("monthly-bullets").innerHTML = (report.monthly_bullets || []).map(b =>
+            `<li><strong>[${b.category} · ${b.timestamp}]</strong> ${b.text}</li>`
+          ).join("");
+        }
+      }
     }
+
+    document.getElementById("save-monthly-btn").onclick = async () => {
+      const matchId = document.getElementById("monthly-match-select").value;
+      if (!matchId) return;
+      const { data: { user } } = await supabase.auth.getUser();
+      await supabase.from("match_analyses").update({ selected_for_monthly: false }).eq("user_id", user.id);
+      await supabase.from("match_analyses").update({ selected_for_monthly: true }).eq("id", matchId);
+      document.getElementById("monthly-msg").textContent = "Saved! This match will be uploaded to Gemini 3.8 Flash at the end of the month.";
+    };
+
+    loadAnalystHub();
   </script>
 </body>
 </html>
