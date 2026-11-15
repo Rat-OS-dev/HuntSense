@@ -136,9 +136,11 @@
         accounts = result.users || [];
         renderRows();
         status.textContent = accounts.length + " account(s) loaded.";
+        return true;
       } catch (error) {
         status.textContent = error.message + " Admin access must be configured on the secure server.";
-        rows.innerHTML = '<tr><td colspan="3">Accounts could not be loaded.</td></tr>';
+        rows.innerHTML = '<tr><td colspan="3">Access blocked. No account data was returned.</td></tr>';
+        return false;
       }
     }
     document.getElementById("edit-cancel").addEventListener("click", closeEditor);
@@ -172,11 +174,12 @@
       loginPanel.hidden = true;
       appPanel.hidden = false;
       status.textContent = "Checking secure admin authorization…";
-      await loadAccounts();
-      if (!accounts.length && status.textContent.includes("Access denied")) {
+      const authorized = await loadAccounts();
+      if (!authorized) {
         await supabase.auth.signOut();
         loginPanel.hidden = false;
         appPanel.hidden = true;
+        message.textContent = status.textContent;
       }
     });
     async function showApp() {
