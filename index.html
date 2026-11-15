@@ -1,339 +1,179 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>HuntSense</title>
-  <link rel="stylesheet" href="styles.css">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>HuntSense · My Videos</title>
+  <link rel="stylesheet" href="styles.css" />
+  <style>
+    .tile-badge{position:absolute;top:10px;right:10px;padding:4px 9px;border-radius:999px;font-size:.66rem;font-weight:800;letter-spacing:.08em;text-transform:uppercase;backdrop-filter:blur(8px)}
+    .badge-pending{background:rgba(213,173,112,.22);border:1px solid rgba(213,173,112,.5);color:#f0c987}
+    .badge-ready{background:rgba(131,167,123,.24);border:1px solid rgba(131,167,123,.5);color:#b8e3ae}
+  </style>
 </head>
-<body class="app-page home-page">
+<body class="app-page">
   <div class="app-shell">
-    <aside class="app-sidebar" aria-label="Main navigation">
+    <aside class="app-sidebar">
       <a class="sidebar-brand" href="index.html">HuntSense</a>
       <nav class="sidebar-nav">
-        <a class="sidebar-link is-active" href="index.html" aria-current="page"><span class="nav-dot"></span>My Videos</a>
+        <a class="sidebar-link is-active" href="index.html"><span class="nav-dot"></span>My Videos</a>
         <a class="sidebar-link" href="analysis.html"><span class="nav-dot"></span>Analysis</a>
+        <a id="admin-nav-link" class="sidebar-link" href="admin.html" hidden><span class="nav-dot"></span>Admin</a>
       </nav>
-      <a class="sidebar-account" href="account.html">Account <span aria-hidden="true">↗</span></a>
+      <a class="sidebar-account" href="account.html"><span>Account</span><span>↗</span></a>
     </aside>
-    <div class="app-main">
-  <main class="home-content" aria-label="HuntSense home">
-    <section class="videos-section" aria-labelledby="videos-heading">
-      <div class="section-heading">
-        <div>
-          <h1 id="videos-heading">My videos</h1>
-          <p class="muted">Your uploaded gameplay clips, saved privately to your account.</p>
-        </div>
-        <button class="add-video-button" id="choose-video" type="button" aria-label="Add a video" title="Add a video">+</button>
-        <input id="video-file" type="file" accept="video/mp4,video/webm,video/quicktime,.mp4,.webm,.mov" hidden>
+
+    <main class="app-main">
+      <div class="home-content">
+        <section class="videos-section">
+          <div class="section-heading">
+            <div>
+              <h1>My videos</h1>
+              <p>Upload your Hunt: Showdown matches. Click any match to inspect YOLO fight timestamps, reaction speed, and weapon accuracy.</p>
+            </div>
+            <button id="add-video-btn" class="add-video-button" type="button" title="Upload match video">+</button>
+            <input id="video-file-input" type="file" accept="video/mp4,video/webm,video/quicktime" hidden />
+          </div>
+
+          <p class="upload-note">MP4, WebM, or MOV · Queued as Pending until Admin turns the GPU Scanner ON</p>
+          <p id="status-msg" class="message"></p>
+
+          <div id="video-list" class="video-list">
+            <div class="empty-videos">Loading your matches…</div>
+          </div>
+        </section>
       </div>
-      <p class="upload-note">MP4, WebM, or MOV · Up to 50 MB per video</p>
-      <p class="message" id="video-message" role="status" aria-live="polite"></p>
-      <div class="video-list" id="video-list">
-        <p class="empty-videos">Loading your videos…</p>
+    </main>
+  </div>
+
+  <!-- Clip Naming Modal -->
+  <div id="title-modal" class="title-modal" hidden>
+    <div class="player-backdrop"></div>
+    <div class="title-panel">
+      <h2>Name your match</h2>
+      <p>Give this gameplay recording a title before adding it to your HuntSense queue.</p>
+      <label for="clip-title-input">Match title</label>
+      <input id="clip-title-input" type="text" placeholder="e.g. Bounty Clash - Lawson Station" />
+      <div class="title-actions">
+        <button id="cancel-title-btn" class="secondary" type="button">Cancel</button>
+        <button id="save-title-btn" type="button">Save match</button>
       </div>
-    </section>
-  </main>
     </div>
   </div>
 
-  <div class="title-modal" id="title-modal" hidden role="dialog" aria-modal="true" aria-labelledby="title-modal-heading">
-    <div class="player-backdrop" data-cancel-title></div>
-    <section class="title-panel">
-      <h2 id="title-modal-heading">Name your clip</h2>
-      <p>Give this gameplay clip a title before saving it.</p>
-      <label for="clip-title-input">Clip title</label>
-      <input id="clip-title-input" type="text" maxlength="80" placeholder="e.g. Clean extraction" autocomplete="off">
-      <div class="title-actions">
-        <button class="secondary" id="cancel-title" type="button">Cancel</button>
-        <button id="save-title" type="button">Save clip</button>
-      </div>
-    </section>
-  </div>
-
-  <div class="confirm-modal" id="delete-confirm-modal" hidden role="dialog" aria-modal="true" aria-labelledby="delete-confirm-heading">
-    <div class="player-backdrop"></div>
-    <section class="title-panel confirm-panel">
-      <h2 id="delete-confirm-heading">Delete this video?</h2>
-      <p id="delete-confirm-text">Are you sure you want to delete this clip?</p>
-      <div class="title-actions">
-        <button class="secondary" id="cancel-delete" type="button">No</button>
-        <button class="danger-button" id="confirm-delete" type="button">Yes, delete</button>
-      </div>
-    </section>
-  </div>
-
-  <div class="player-modal" id="player-modal" hidden role="dialog" aria-modal="true" aria-labelledby="player-title">
-    <div class="player-backdrop" data-close-player></div>
-    <section class="player-panel">
-      <div class="player-heading">
-        <div><p class="eyebrow">HUNTSENSE PLAYER</p><h2 id="player-title">Your video</h2></div>
-        <div class="player-actions">
-          <button class="player-close" type="button" data-close-player aria-label="Close player">×</button>
-        </div>
-      </div>
-      <video id="main-player" playsinline preload="metadata"></video>
-      <div class="custom-video-controls">
-        <div class="video-progress-row">
-          <span id="current-time">0:00</span>
-          <input id="video-seek" class="video-seek" type="range" min="0" max="1000" value="0" aria-label="Seek video">
-          <span id="duration-time">0:00</span>
-        </div>
-        <div class="video-control-row">
-          <button id="play-pause-button" type="button" class="video-control-button">Pause</button>
-          <div class="clip-menu-wrap">
-            <button class="clip-menu-button" id="clip-menu-button" type="button" aria-label="More video options" aria-expanded="false">⋯</button>
-            <div class="clip-menu" id="clip-menu" hidden>
-              <a id="download-clip" href="#" download>Download</a>
-              <label for="playback-speed">Playback speed</label>
-              <select id="playback-speed" aria-label="Playback speed">
-                <option value="0.5">0.5×</option><option value="0.75">0.75×</option><option value="1" selected>Normal</option><option value="1.25">1.25×</option><option value="1.5">1.5×</option><option value="2">2×</option>
-              </select>
-              <button id="picture-in-picture" type="button">Picture in picture</button>
-              <button class="delete-clip-button" id="delete-clip-button" type="button">Delete video</button>
-            </div>
-          </div>
-        </div>
-      </div>
-    </section>
-  </div>
   <script type="module">
     import { supabase } from "./supabase.js";
 
-    const BUCKET = "huntsense-videos";
-    const MAX_FILE_SIZE = 50 * 1024 * 1024;
-    const chooseButton = document.querySelector("#choose-video");
-    const fileInput = document.querySelector("#video-file");
-    const videoList = document.querySelector("#video-list");
-    const message = document.querySelector("#video-message");
-    const playerModal = document.querySelector("#player-modal");
-    const mainPlayer = document.querySelector("#main-player");
-    const playerTitle = document.querySelector("#player-title");
-    const deleteConfirmModal = document.querySelector("#delete-confirm-modal");
-    const deleteConfirmText = document.querySelector("#delete-confirm-text");
-    const cancelDeleteButton = document.querySelector("#cancel-delete");
-    const confirmDeleteButton = document.querySelector("#confirm-delete");
-    const downloadClip = document.querySelector("#download-clip");
-    const playbackSpeed = document.querySelector("#playback-speed");
-    const pipButton = document.querySelector("#picture-in-picture");
-    const playPauseButton = document.querySelector("#play-pause-button");
-    const videoSeek = document.querySelector("#video-seek");
-    const currentTimeLabel = document.querySelector("#current-time");
-    const durationTimeLabel = document.querySelector("#duration-time");
-    const titleModal = document.querySelector("#title-modal");
-    const titleInput = document.querySelector("#clip-title-input");
-    const saveTitleButton = document.querySelector("#save-title");
-    const cancelTitleButton = document.querySelector("#cancel-title");
-    const clipMenuButton = document.querySelector("#clip-menu-button");
-    const clipMenu = document.querySelector("#clip-menu");
-    const deleteClipButton = document.querySelector("#delete-clip-button");
+    const addBtn = document.getElementById("add-video-btn");
+    const fileInput = document.getElementById("video-file-input");
+    const titleModal = document.getElementById("title-modal");
+    const titleInput = document.getElementById("clip-title-input");
+    const cancelTitleBtn = document.getElementById("cancel-title-btn");
+    const saveTitleBtn = document.getElementById("save-title-btn");
+    const statusMsg = document.getElementById("status-msg");
+    const videoList = document.getElementById("video-list");
+
     let pendingFile = null;
-    let activeClipPath = null;
-    let activeClipTitle = "";
-    let currentUserId = null;
-    function openVideo(url, title, path) {
-      activeClipPath = path; activeClipTitle = title;
-      playerTitle.textContent = title; mainPlayer.src = url;
-      downloadClip.href = url; downloadClip.download = title + ".mp4";
-      playbackSpeed.value = "1"; mainPlayer.playbackRate = 1;
-      videoSeek.value = "0"; currentTimeLabel.textContent = "0:00"; durationTimeLabel.textContent = "0:00";
-      playPauseButton.textContent = "Pause";
-      playerModal.hidden = false; document.body.classList.add("player-open");
-      mainPlayer.play().catch(() => {});
-    }
-    function closeVideo() {
-      mainPlayer.pause(); mainPlayer.removeAttribute("src"); mainPlayer.load();
-      playerModal.hidden = true; clipMenu.hidden = true; clipMenuButton.setAttribute("aria-expanded", "false"); deleteConfirmModal.hidden = true; document.body.classList.remove("player-open");
-    }
-    function closeTitleDialog() {
-      titleModal.hidden = true;
-      pendingFile = null;
-      titleInput.value = "";
-      fileInput.value = "";
-    }
-    function showTitleDialog(file) {
-      pendingFile = file;
-      const baseName = file.name.replace(/\.[^.]+$/, "").replace(/[_-]+/g, " ").trim();
-      titleInput.value = baseName.slice(0, 80);
-      titleModal.hidden = false;
-      titleInput.focus();
-      titleInput.select();
-    }
-    cancelTitleButton.addEventListener("click", closeTitleDialog);
-    titleModal.querySelectorAll("[data-cancel-title]").forEach(el => el.addEventListener("click", closeTitleDialog));
-    clipMenuButton.addEventListener("click", () => {
-      clipMenu.hidden = !clipMenu.hidden;
-      clipMenuButton.setAttribute("aria-expanded", String(!clipMenu.hidden));
-    });
-    deleteClipButton.addEventListener("click", () => {
-      if (!activeClipPath) return;
-      clipMenu.hidden = true;
-      clipMenuButton.setAttribute("aria-expanded", "false");
-      deleteConfirmText.textContent = 'Are you sure you want to delete "' + activeClipTitle + '"?';
-      deleteConfirmModal.hidden = false;
-    });
-    cancelDeleteButton.addEventListener("click", () => { deleteConfirmModal.hidden = true; });
-    confirmDeleteButton.addEventListener("click", async () => {
-      if (!activeClipPath || !currentUserId) return;
-      confirmDeleteButton.disabled = true;
-      try {
-        const { error: deleteError } = await supabase.storage.from(BUCKET).remove([activeClipPath]);
-        if (deleteError) throw deleteError;
-        const deletedTitle = activeClipTitle;
-        activeClipPath = null;
-        activeClipTitle = "";
-        closeVideo();
-        message.textContent = 'Deleted "' + deletedTitle + '".';
-        await loadVideos(currentUserId);
-      } catch (error) {
-        deleteConfirmText.textContent = error.message || "The video could not be deleted. Please try again.";
-      } finally {
-        confirmDeleteButton.disabled = false;
-      }
-    });
-    function formatTime(seconds) {
-      if (!Number.isFinite(seconds)) return "0:00";
-      const mins = Math.floor(seconds / 60);
-      const secs = Math.floor(seconds % 60).toString().padStart(2, "0");
-      return mins + ":" + secs;
-    }
-    mainPlayer.addEventListener("loadedmetadata", () => { durationTimeLabel.textContent = formatTime(mainPlayer.duration); });
-    mainPlayer.addEventListener("timeupdate", () => {
-      currentTimeLabel.textContent = formatTime(mainPlayer.currentTime);
-      if (Number.isFinite(mainPlayer.duration) && mainPlayer.duration > 0) videoSeek.value = String(Math.round(mainPlayer.currentTime / mainPlayer.duration * 1000));
-    });
-    mainPlayer.addEventListener("play", () => { playPauseButton.textContent = "Pause"; });
-    mainPlayer.addEventListener("pause", () => { playPauseButton.textContent = "Play"; });
-    playPauseButton.addEventListener("click", () => { if (mainPlayer.paused) mainPlayer.play().catch(() => {}); else mainPlayer.pause(); });
-    videoSeek.addEventListener("input", () => { if (Number.isFinite(mainPlayer.duration)) mainPlayer.currentTime = Number(videoSeek.value) / 1000 * mainPlayer.duration; });
-    playbackSpeed.addEventListener("change", () => { mainPlayer.playbackRate = Number(playbackSpeed.value); });
-    pipButton.addEventListener("click", async () => {
-      try {
-        if (document.pictureInPictureElement) await document.exitPictureInPicture();
-        else if (document.pictureInPictureEnabled && mainPlayer.requestPictureInPicture) await mainPlayer.requestPictureInPicture();
-        else message.textContent = "Picture in picture is not supported by this browser.";
-      } catch (error) { message.textContent = "Could not open picture in picture: " + error.message; }
-    });
-    playerModal.querySelectorAll("[data-close-player]").forEach(el => el.addEventListener("click", closeVideo));
-    document.addEventListener("keydown", event => { if (event.key === "Escape" && !playerModal.hidden) closeVideo(); });
+    let currentUser = null;
 
-    const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-    if (sessionError || !session) {
-      window.location.replace("login.html");
-    } else {
-      supabase.auth.onAuthStateChange((_event, nextSession) => {
-        if (!nextSession) window.location.replace("login.html");
-      });
-      currentUserId = session.user.id;
-      await loadVideos(session.user.id);
-    }
-
-    chooseButton.addEventListener("click", () => fileInput.click());
-
-    fileInput.addEventListener("change", async () => {
-      const file = fileInput.files?.[0];
-      if (!file) return;
-      message.textContent = "";
-
-      const allowedTypes = ["video/mp4", "video/webm", "video/quicktime"];
-      if (!allowedTypes.includes(file.type)) {
-        message.textContent = "Please choose an MP4, WebM, or MOV video.";
-        fileInput.value = "";
+    async function init() {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        window.location.href = "login.html";
         return;
       }
-      if (file.size > MAX_FILE_SIZE) {
-        message.textContent = "That video is over the 50 MB upload limit.";
-        fileInput.value = "";
-        return;
+      currentUser = user;
+      if (user.email?.toLowerCase() === "ryan@ratys.com") {
+        document.getElementById("admin-nav-link").hidden = false;
       }
+      loadMatches();
+    }
 
-      showTitleDialog(file);
-    });
-
-    saveTitleButton.addEventListener("click", async () => {
-      const file = pendingFile;
-      const title = titleInput.value.trim();
-      if (!file) return;
-      if (!title) {
-        message.textContent = "Please enter a title for your clip.";
-        titleInput.focus();
-        return;
-      }
-
-      titleModal.hidden = true;
-      chooseButton.disabled = true;
-      saveTitleButton.disabled = true;
-      chooseButton.textContent = "…";
-      message.textContent = "Uploading your clip…";
-
-      try {
-        const extension = file.name.includes(".") ? file.name.split(".").pop().toLowerCase() : "mp4";
-        const safeTitle = title.replace(/[^a-zA-Z0-9._-]+/g, "_").replace(/^_+|_+$/g, "").slice(0, 70) || "clip";
-        const objectPath = `${currentUserId}/${crypto.randomUUID()}-${safeTitle}.${extension}`;
-        const { error: uploadError } = await supabase.storage
-          .from(BUCKET)
-          .upload(objectPath, file, {
-            cacheControl: "3600",
-            contentType: file.type,
-            upsert: false
-          });
-
-        if (uploadError) throw uploadError;
-        message.textContent = 'Saved "' + title + '" successfully.';
-        await loadVideos(currentUserId);
-      } catch (error) {
-        message.textContent = error.message || "The video could not be uploaded. Please try again.";
-      } finally {
-        chooseButton.disabled = false;
-        saveTitleButton.disabled = false;
-        chooseButton.textContent = "+";
-        pendingFile = null;
-        titleInput.value = "";
-        fileInput.value = "";
-      }
-    });
-
-    async function loadVideos(userId) {
-      videoList.replaceChildren();
-      const { data: files, error } = await supabase.storage
-        .from(BUCKET)
-        .list(userId, {
-          limit: 100,
-          sortBy: { column: "created_at", order: "desc" }
-        });
+    async function loadMatches() {
+      const { data: matches, error } = await supabase
+        .from("match_analyses")
+        .select("*")
+        .eq("user_id", currentUser.id)
+        .order("created_at", { ascending: false });
 
       if (error) {
-        videoList.textContent = "Could not load your videos: " + error.message;
+        videoList.innerHTML = `<div class="empty-videos">Error loading matches: ${error.message}</div>`;
         return;
       }
 
-      const videos = (files || []).filter(file => file.name && file.name !== ".emptyFolderPlaceholder");
-      if (!videos.length) {
-        const empty = document.createElement("p");
-        empty.className = "empty-videos";
-        empty.textContent = "No videos yet. Click the + button to upload your first clip.";
-        videoList.append(empty);
+      if (!matches || matches.length === 0) {
+        videoList.innerHTML = `<div class="empty-videos">No matches uploaded yet. Click the <strong>+</strong> button above to upload your first Hunt: Showdown recording.</div>`;
         return;
       }
 
-      for (const file of videos) {
-        const path = userId + "/" + file.name;
-        const { data: signed, error: urlError } = await supabase.storage.from(BUCKET).createSignedUrl(path, 60 * 60);
-        const tile = document.createElement("button"); tile.type = "button"; tile.className = "video-tile";
-        tile.disabled = !!urlError || !signed?.signedUrl; tile.setAttribute("aria-label", "Play " + file.name);
-        const poster = document.createElement("video"); poster.className = "video-tile-preview";
-        poster.muted = true; poster.playsInline = true; poster.preload = "metadata";
-        if (!urlError && signed?.signedUrl) poster.src = signed.signedUrl;
-        const playMark = document.createElement("span"); playMark.className = "tile-play-mark";
-        playMark.setAttribute("aria-hidden", "true"); playMark.textContent = "▶";
-        const meta = document.createElement("span"); meta.className = "video-tile-meta";
-        const name = document.createElement("strong"); name.className = "video-name"; name.textContent = file.name.replace(/^[0-9a-f-]+-/i, "").replace(/\.[^.]+$/, "").replace(/_/g, " ");
-        const date = document.createElement("small"); date.textContent = file.created_at ? new Date(file.created_at).toLocaleDateString() : "Uploaded clip";
-        meta.append(name, date); tile.append(poster, playMark, meta);
-        if (!urlError && signed?.signedUrl) tile.addEventListener("click", () => openVideo(signed.signedUrl, name.textContent, path));
-        videoList.append(tile);
-      }
+      videoList.innerHTML = matches.map(m => {
+        const isReady = m.status === "ready";
+        const subText = isReady
+          ? `${(m.timestamps || []).length} fights · ${m.avg_reaction_ms ? m.avg_reaction_ms + " ms avg" : "Analyzed"}`
+          : "Pending Admin GPU Scan";
+        return `
+          <button class="video-tile" type="button" onclick="window.location.href='match.html?id=${m.id}'">
+            <div class="video-tile-preview"></div>
+            <span class="tile-badge ${isReady ? "badge-ready" : "badge-pending"}">${m.status}</span>
+            <span class="tile-play-mark">▶</span>
+            <div class="video-tile-meta">
+              <p class="video-name">${m.video_title}</p>
+              <small>${subText}</small>
+            </div>
+          </button>
+        `;
+      }).join("");
     }
+
+    addBtn.onclick = () => fileInput.click();
+
+    fileInput.onchange = () => {
+      if (fileInput.files && fileInput.files) {
+        pendingFile = fileInput.files;
+        titleInput.value = pendingFile.name.replace(/\.[^/.]+$/, "");
+        titleModal.hidden = false;
+        titleInput.focus();
+      }
+    };
+
+    cancelTitleBtn.onclick = () => {
+      pendingFile = null;
+      fileInput.value = "";
+      titleModal.hidden = true;
+    };
+
+    saveTitleBtn.onclick = async () => {
+      if (!pendingFile || !currentUser) return;
+      const title = titleInput.value.trim() || "Untitled Match";
+      saveTitleBtn.disabled = true;
+      statusMsg.textContent = "Uploading match video to HuntSense...";
+      titleModal.hidden = true;
+
+      const fileExt = pendingFile.name.split(".").pop();
+      const storagePath = `${currentUser.id}/${Date.now()}.${fileExt}`;
+
+      const { error: upErr } = await supabase.storage.from("videos").upload(storagePath, pendingFile);
+      if (upErr) {
+        statusMsg.textContent = `Upload failed: ${upErr.message}`;
+        saveTitleBtn.disabled = false;
+        return;
+      }
+
+      const { error: dbErr } = await supabase.from("match_analyses").insert({
+        user_id: currentUser.id,
+        video_path: storagePath,
+        video_title: title,
+        status: "pending"
+      });
+
+      statusMsg.textContent = dbErr ? `Database error: ${dbErr.message}` : "Match uploaded! Status set to Pending.";
+      saveTitleBtn.disabled = false;
+      pendingFile = null;
+      fileInput.value = "";
+      loadMatches();
+    };
+
+    init();
   </script>
 </body>
 </html>
