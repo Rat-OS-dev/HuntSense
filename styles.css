@@ -121,3 +121,66 @@
 @media(max-width:850px){.app-sidebar{width:204px}.app-main{margin-left:204px}.analysis-main{margin-left:204px;width:calc(100% - 252px)}.home-content{width:calc(100% - 56px)}}
 @media(max-width:650px){.app-sidebar{position:sticky;top:0;width:100%;height:auto;min-height:0;flex-direction:row;align-items:center;padding:10px 14px;border-right:0;border-bottom:1px solid rgba(255,255,255,.07)}.sidebar-brand{margin:0 16px 0 0;font-size:1.05rem}.sidebar-brand:before{width:29px;height:29px}.sidebar-nav{display:flex;gap:4px}.sidebar-link{min-height:38px;padding:0 9px;font-size:.8rem}.selected-tag{display:none}.sidebar-account{margin:0 0 0 auto;padding:8px 0 8px 10px;border:0;font-size:.78rem}.app-main,.analysis-main{margin-left:0;width:100%}.home-content{width:calc(100% - 32px);padding:34px 0 60px}.analysis-main{padding:34px 16px 28px}.analysis-heading{align-items:flex-start;margin-bottom:30px}.analysis-heading h1{font-size:2.2rem}.analysis-subtitle{font-size:.88rem}.stat-grid{grid-template-columns:1fr;gap:10px}.stat-card{min-height:112px;padding:16px}.stat-number{margin:9px 0 5px}.dashboard-section{margin-bottom:30px}.dashboard-section-heading{align-items:flex-start}.live-label{font-size:.67rem}.recent-row{padding:13px}.recent-open-link{font-size:.68rem}.focus-card{padding:18px;gap:13px}}
 @media(max-width:390px){.sidebar-brand{margin-right:7px;font-size:.94rem}.sidebar-nav{gap:1px}.sidebar-link{gap:7px;padding:0 7px;font-size:.74rem}.sidebar-account{font-size:.72rem}.analysis-heading{display:block}.outline-link{display:inline-flex;margin-top:16px}.dashboard-section-heading{display:block}.live-label{margin-top:10px}}
+
+/* Responsive app shell and clean analysis page */
+.app-sidebar{
+  width:20%;
+  padding:2.5% 1.5%;
+}
+.app-main{margin-left:20%}
+.analysis-main{
+  width:76%;
+  margin-left:20%;
+  padding:4% 2% 3%;
+}
+.analysis-heading{
+  align-items:flex-start;
+  margin-bottom:0;
+}
+.analysis-heading h1{
+  font-size:clamp(2rem,4vw,3rem);
+}
+.analysis-subtitle{
+  max-width:62ch;
+}
+@media(max-width:850px){
+  .app-sidebar{
+    width:24%;
+    padding:3% 1.5%;
+  }
+  .app-main{margin-left:24%}
+  .analysis-main{
+    width:72%;
+    margin-left:24%;
+    padding:5% 2%;
+  }
+}
+@media(max-width:650px){
+  .app-sidebar{
+    position:sticky;
+    top:0;
+    width:100%;
+    height:auto;
+    min-height:0;
+    flex-direction:row;
+    align-items:center;
+    padding:2% 3%;
+  }
+  .app-main,.analysis-main{
+    width:94%;
+    margin:0 auto;
+  }
+  .analysis-main{padding:7% 0}
+  .analysis-heading{
+    flex-wrap:wrap;
+    gap:5%;
+  }
+  .analysis-heading h1{font-size:clamp(2rem,8vw,2.6rem)}
+}
+@media(max-width:390px){
+  .app-sidebar{padding:2%}
+  .sidebar-brand{margin-right:2%}
+  .sidebar-nav{gap:1%}
+  .sidebar-link{padding:0 2%}
+  .sidebar-account{padding-left:2%}
+}
