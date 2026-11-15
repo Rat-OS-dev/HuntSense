@@ -90,6 +90,8 @@
     const pageLabel = document.getElementById("video-page-label");
 
     const PAGE_SIZE = 8;
+    const VIDEO_BUCKET = "huntsense-videos";
+    const MAX_VIDEO_BYTES = 50 * 1024 * 1024;
     let pendingFile = null;
     let currentUser = null;
     let allMatches = [];
@@ -216,6 +218,12 @@
         return;
       }
 
+      if (selectedFile.size > MAX_VIDEO_BYTES) {
+        statusMsg.textContent = "This video is " + (selectedFile.size / 1024 / 1024).toFixed(1) + " MB. The current upload limit is 50 MB per video.";
+        fileInput.value = "";
+        return;
+      }
+
       pendingFile = selectedFile;
       titleInput.value = selectedFile.name.replace(/\.[^/.]+$/, "");
       titleModal.hidden = false;
@@ -247,43 +255,54 @@
       const storagePath = currentUser.id + "/" + crypto.randomUUID() + "." + extension;
 
       saveTitleBtn.disabled = true;
-      statusMsg.textContent = "Uploading your video…";
+      saveTitleBtn.textContent = "Uploading…";
+      statusMsg.textContent = "Uploading " + fileToUpload.name + " (" + (fileToUpload.size / 1024 / 1024).toFixed(1) + " MB)…";
 
-      const { error: uploadError } = await supabase.storage
-        .from("videos")
-        .upload(storagePath, fileToUpload, {
-          contentType: fileToUpload.type || "video/" + extension,
-          upsert: false
+      let uploaded = false;
+      try {
+        const { error: uploadError } = await supabase.storage
+          .from(VIDEO_BUCKET)
+          .upload(storagePath, fileToUpload, {
+            contentType: fileToUpload.type || "video/" + extension,
+            cacheControl: "3600",
+            upsert: false
+          });
+
+        if (uploadError) {
+          throw new Error("Storage upload failed (" + (uploadError.statusCode || "unknown status") + "): " + uploadError.message);
+        }
+        uploaded = true;
+
+        statusMsg.textContent = "Upload complete. Saving your video to the library…";
+        const { error: insertError } = await supabase.from("match_analyses").insert({
+          user_id: currentUser.id,
+          video_path: storagePath,
+          video_title: title,
+          status: "pending"
         });
 
-      if (uploadError) {
-        statusMsg.textContent = "Upload failed: " + uploadError.message;
+        if (insertError) {
+          throw new Error("The file uploaded, but the library entry failed: " + insertError.message);
+        }
+
+        titleModal.hidden = true;
+        pendingFile = null;
+        fileInput.value = "";
+        titleInput.value = "";
+        currentPage = 0;
+        statusMsg.textContent = "“" + title + "” was added to My Videos.";
+        await loadMatches();
+      } catch (error) {
+        if (uploaded) {
+          const { error: cleanupError } = await supabase.storage.from(VIDEO_BUCKET).remove([storagePath]);
+          if (cleanupError) console.error("Could not clean up incomplete video upload:", cleanupError);
+        }
+        console.error("HuntSense video save failed:", error);
+        statusMsg.textContent = error?.message || "The video could not be saved. Please try again.";
+      } finally {
         saveTitleBtn.disabled = false;
-        return;
+        saveTitleBtn.textContent = "Save video";
       }
-
-      const { error: insertError } = await supabase.from("match_analyses").insert({
-        user_id: currentUser.id,
-        video_path: storagePath,
-        video_title: title,
-        status: "pending"
-      });
-
-      if (insertError) {
-        await supabase.storage.from("videos").remove([storagePath]);
-        statusMsg.textContent = "Video uploaded, but its library record could not be saved: " + insertError.message;
-        saveTitleBtn.disabled = false;
-        return;
-      }
-
-      titleModal.hidden = true;
-      pendingFile = null;
-      fileInput.value = "";
-      titleInput.value = "";
-      saveTitleBtn.disabled = false;
-      currentPage = 0;
-      statusMsg.textContent = "“" + title + "” was added to My Videos.";
-      await loadMatches();
     });
 
     previousPageBtn.addEventListener("click", () => {
