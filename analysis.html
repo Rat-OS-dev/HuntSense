@@ -12,6 +12,7 @@
     .monthly-window{margin-top:16px;padding:18px;border:1px solid rgba(213,173,112,.22);border-radius:14px;background:#101310;max-height:340px;overflow-y:auto}
     .monthly-window li{margin-bottom:9px;line-height:1.55;color:#dfd8ca}
     select.match-select{width:100%;max-width:440px;padding:12px;border-radius:10px;border:1px solid var(--line);background:#101310;color:#fff;font:inherit}
+    #admin-nav-link[hidden]{display:none!important}
   </style>
 </head>
 <body class="app-page">
@@ -83,9 +84,10 @@
     async function loadAnalystHub() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) { window.location.replace("login.html"); return; }
-      if ((user.email || "").trim().toLowerCase() === "ryan@ratys.com" && user.email_confirmed_at) {
-        document.getElementById("admin-nav-link").hidden = false;
-      }
+      const adminLink = document.getElementById("admin-nav-link");
+      const isAdmin = (user.email || "").trim().toLowerCase() === "ryan@ratys.com" && Boolean(user.email_confirmed_at);
+      if (isAdmin) adminLink.hidden = false;
+      else adminLink.remove();
 
       // Populate dropdown with this month's matches
       const { data: matches } = await supabase
