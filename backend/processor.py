@@ -1,4 +1,4 @@
-import os, re, time, json, tempfile, subprocess, logging
+import os, re, time, json, tempfile, subprocess, logging, shutil
 from pathlib import Path
 import cv2
 import pytesseract
@@ -59,6 +59,35 @@ def tus_upload(local_path, object_path, content_type="video/mp4"):
             if patch.status_code not in (204,): raise RuntimeError("TUS chunk upload failed: "+patch.text[:1000])
             offset=int(patch.headers.get("Upload-Offset",offset+len(chunk)))
     return True
+
+def verify_storage_object(object_path, local_path):
+    """Confirm an uploaded object exists in the bucket with the expected byte size."""
+    parent, _, filename = object_path.rpartition("/")
+    entries = supabase.storage.from_(BUCKET).list(
+        parent, {"search": filename, "limit": 100}
+    )
+    expected_size = os.path.getsize(local_path)
+    for entry in entries or []:
+        if entry.get("name") == filename:
+            metadata = entry.get("metadata") or {}
+            size = metadata.get("size")
+            if size is not None and int(size) == expected_size:
+                return True
+            raise RuntimeError(
+                f"Uploaded object {object_path} exists but its size could not be verified "
+                f"(expected {expected_size} bytes, got {size!r})."
+            )
+    return False
+
+def delete_source_after_verification(source_path):
+    """Delete the original only after every derived match has been verified."""
+    supabase.storage.from_(BUCKET).remove([source_path])
+    parent, _, filename = source_path.rpartition("/")
+    remaining = supabase.storage.from_(BUCKET).list(
+        parent, {"search": filename, "limit": 100}
+    )
+    if any(item.get("name") == filename for item in (remaining or [])):
+        raise RuntimeError("Original deletion could not be verified; original retained.")
 
 def probe(path):
     raw=run(["ffprobe","-v","error","-show_entries","format=duration","-of","default=noprint_wrappers=1:nokey=1",path])
@@ -204,6 +233,8 @@ def process_job(job):
             encode_segment(str(compressed),start,end,str(out))
             storage=f"{uid}/matches/{jid}/match-{idx:02d}.mp4"
             tus_upload(str(out),storage)
+            if not verify_storage_object(storage, str(out)):
+                raise RuntimeError(f"Uploaded match could not be verified in Supabase: {storage}")
             row=supabase.table("match_analyses").insert({
                 "user_id":uid,"video_path":storage,
                 "video_title":f'{Path(job["source_title"]).stem} - Match {idx}',
@@ -211,24 +242,35 @@ def process_job(job):
             }).execute().data[0]
             created.append(row["id"])
         # Newly created pending rows are picked up by the existing analysis scanner.
-        # Keep the original recording until the user has verified the outputs.
-        job_status="completed"
-        message=f"{len(created)} match video(s) were split and saved. Match analysis is queued separately."
+        # Every match object has been size-verified and its database row inserted.
+        # Only now is it safe to remove the original long recording.
+        cleanup_note = "Original recording deleted after all split matches were verified."
+        try:
+            delete_source_after_verification(src)
+            log.info("Job %s: verified all %s match uploads and deleted original %s",jid,len(created),src)
+        except Exception as cleanup_exc:
+            cleanup_note = (
+                "Match videos were saved, but the original recording was NOT deleted "
+                f"because cleanup could not be verified: {str(cleanup_exc)[:500]}"
+            )
+            log.exception("Job %s: original cleanup failed; keeping source",jid)
+        message=f"{len(created)} match video(s) were split and saved. Match analysis is queued separately. {cleanup_note}"
         supabase.table("video_processing_jobs").update({
-            "status":job_status,"error_message":message
+            "status":"completed","error_message":message
         }).eq("id",jid).execute()
-        log.info("Job %s produced %s match videos; original retained at %s",jid,len(created),src)
     except Exception as exc:
         log.exception("Job %s failed",jid)
         supabase.table("video_processing_jobs").update({
             "status":"failed","error_message":str(exc)[:1500]
         }).eq("id",jid).execute()
     finally:
-        for p in work.glob("*"):
-            try: p.unlink()
-            except OSError: pass
-        try: work.rmdir()
-        except OSError: pass
+        # Remove the entire per-job workspace, including nested temp folders/files.
+        try:
+            shutil.rmtree(work)
+        except FileNotFoundError:
+            pass
+        except OSError:
+            log.exception("Job %s: could not fully remove temporary workspace %s",jid,work)
 
 def main():
     if not supabase:
