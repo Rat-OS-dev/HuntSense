@@ -250,8 +250,8 @@ def process_job(job):
             log.info("Job %s: verified all %s match uploads and deleted original %s",jid,len(created),src)
         except Exception as cleanup_exc:
             cleanup_note = (
-                "Match videos were saved, but the original recording was NOT deleted "
-                f"because cleanup could not be verified: {str(cleanup_exc)[:500]}"
+                "Match videos were saved, but original-file cleanup could not be confirmed. "
+                f"Check the original object in Supabase: {str(cleanup_exc)[:500]}"
             )
             log.exception("Job %s: original cleanup failed; keeping source",jid)
         message=f"{len(created)} match video(s) were split and saved. Match analysis is queued separately. {cleanup_note}"
